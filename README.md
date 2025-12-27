@@ -34,20 +34,24 @@ Voice-Agents is part of the [Swarms](https://github.com/kyegomez/swarms) ecosyst
 
 ### Core Capabilities
 
-- **Multi-Provider TTS Support**: Seamlessly switch between OpenAI, ElevenLabs, and Groq
-- **Real-Time Streaming**: Low-latency audio streaming for live agent interactions
-- **Speech-to-Text**: High-accuracy transcription using OpenAI Whisper
-- **Audio Processing**: Built-in utilities for recording, playback, and format conversion
-- **Production-Ready**: Enterprise-grade error handling, authentication, and logging
+| Feature                          | Description                                                        |
+|-----------------------------------|--------------------------------------------------------------------|
+| **Multi-Provider TTS Support**    | Seamlessly switch between OpenAI, ElevenLabs, and Groq             |
+| **Real-Time Streaming**           | Low-latency audio streaming for live agent interactions            |
+| **Speech-to-Text**                | High-accuracy transcription using OpenAI Whisper                   |
+| **Audio Processing**              | Built-in utilities for recording, playback, and format conversion  |
+| **Production-Ready**              | Enterprise-grade error handling, authentication, and logging       |
 
 ### Advanced Features
 
-- **Streaming Callbacks**: Real-time TTS callbacks for agent streaming outputs
-- **Multiple Audio Formats**: Support for PCM, MP3, Opus, AAC, FLAC, and more
-- **Voice Customization**: 10+ OpenAI voices and 30+ ElevenLabs voices
-- **Sentence Detection**: Intelligent text formatting for natural speech pauses
-- **FastAPI Integration**: Generator-based streaming for web applications
-- **Type Safety**: Full type hints and Literal types for better IDE support
+| Feature                  | Description                                                        |
+|--------------------------|--------------------------------------------------------------------|
+| **Streaming Callbacks**  | Real-time TTS callbacks for agent streaming outputs                |
+| **Multiple Audio Formats** | Support for PCM, MP3, Opus, AAC, FLAC, and more                  |
+| **Voice Customization**  | 10+ OpenAI voices and 30+ ElevenLabs voices                        |
+| **Sentence Detection**   | Intelligent text formatting for natural speech pauses              |
+| **FastAPI Integration**  | Generator-based streaming for web applications                     |
+| **Type Safety**          | Full type hints and Literal types for better IDE support           |
 
 ---
 
