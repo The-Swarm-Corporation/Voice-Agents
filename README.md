@@ -297,30 +297,59 @@ print(out)
 
 ## Examples
 
-The `examples/` directory contains comprehensive examples demonstrating all features of Voice-Agents. See the [Examples README](examples/README.md) for detailed documentation.
+The `examples/` directory contains comprehensive examples demonstrating all features of Voice-Agents, organized into logical categories. See the [Examples README](examples/README.md) for detailed documentation.
 
-### Examples Table
+### Examples by Category
 
-| #   | Example File                                                          | Description                                          | Category          |
-| --- | --------------------------------------------------------------------- | ---------------------------------------------------- | ----------------- |
-| 1   | [`example_format_text_for_speech.py`](examples/example_format_text_for_speech.py) | Text formatting for speech with abbreviation handling | Core Functions     |
-| 2   | [`example_play_audio.py`](examples/example_play_audio.py)                     | Audio playback and tone generation                   | Core Functions     |
-| 3   | [`example_stream_tts.py`](examples/example_stream_tts.py)                     | Unified TTS with OpenAI models, `list_models()`     | Core Functions     |
-| 4   | [`example_stream_tts_elevenlabs.py`](examples/example_stream_tts_elevenlabs.py) | ElevenLabs TTS, unified and direct functions         | Core Functions     |
-| 5   | [`example_speech_to_text.py`](examples/example_speech_to_text.py)              | OpenAI Whisper transcription                        | Core Functions     |
-| 6   | [`example_record_audio.py`](examples/example_record_audio.py)                 | Microphone audio recording                          | Core Functions     |
-| 7   | [`example_streaming_tts_callback.py`](examples/example_streaming_tts_callback.py) | StreamingTTSCallback for real-time TTS               | Utilities          |
-| 8   | [`example_get_media_type.py`](examples/example_get_media_type.py)            | Media type (MIME) utilities for FastAPI             | Utilities          |
-| 9   | [`example_voice_selection.py`](examples/example_voice_selection.py)            | Voice selection with `list_voices()`                 | Utilities          |
-| 10  | [`example_complete_voice_agent.py`](examples/example_complete_voice_agent.py)  | Complete voice agent workflows                      | Complete Workflows |
+#### Text-to-Speech (`examples/text_to_speech/`)
+
+| Example File | Description |
+|-------------|-------------|
+| [`example_stream_tts.py`](examples/text_to_speech/example_stream_tts.py) | Unified TTS with OpenAI models, `list_models()` |
+| [`example_stream_tts_elevenlabs.py`](examples/text_to_speech/example_stream_tts_elevenlabs.py) | ElevenLabs TTS, unified and direct functions |
+| [`example_streaming_tts_callback.py`](examples/text_to_speech/example_streaming_tts_callback.py) | StreamingTTSCallback for real-time TTS |
+| [`example_voice_selection.py`](examples/text_to_speech/example_voice_selection.py) | Voice selection with `list_voices()` |
+
+#### Speech-to-Text (`examples/speech_to_text/`)
+
+| Example File | Description |
+|-------------|-------------|
+| [`example_speech_to_text.py`](examples/speech_to_text/example_speech_to_text.py) | OpenAI Whisper transcription |
+| [`example_speech_to_text_elevenlabs_file.py`](examples/speech_to_text/example_speech_to_text_elevenlabs_file.py) | ElevenLabs STT from audio file |
+| [`example_speech_to_text_elevenlabs_audio.py`](examples/speech_to_text/example_speech_to_text_elevenlabs_audio.py) | ElevenLabs STT from audio data |
+
+#### Utilities (`examples/utilities/`)
+
+| Example File | Description |
+|-------------|-------------|
+| [`example_format_text_for_speech.py`](examples/utilities/example_format_text_for_speech.py) | Text formatting for speech with abbreviation handling |
+| [`example_play_audio.py`](examples/utilities/example_play_audio.py) | Audio playback and tone generation |
+| [`example_record_audio.py`](examples/utilities/example_record_audio.py) | Microphone audio recording |
+| [`example_get_media_type.py`](examples/utilities/example_get_media_type.py) | Media type (MIME) utilities for FastAPI |
+
+#### Workflows (`examples/workflows/`)
+
+| Example File | Description |
+|-------------|-------------|
+| [`example_complete_voice_agent.py`](examples/workflows/example_complete_voice_agent.py) | Complete voice agent workflows |
 
 ### Running Examples
 
 ```bash
-# Run a specific example
-python examples/example_stream_tts.py
-python examples/example_speech_to_text.py
-python examples/example_complete_voice_agent.py
+# Text-to-Speech examples
+python examples/text_to_speech/example_stream_tts.py
+python examples/text_to_speech/example_stream_tts_elevenlabs.py
+
+# Speech-to-Text examples
+python examples/speech_to_text/example_speech_to_text.py
+python examples/speech_to_text/example_speech_to_text_elevenlabs_file.py
+
+# Utility examples
+python examples/utilities/example_format_text_for_speech.py
+python examples/utilities/example_record_audio.py
+
+# Workflow examples
+python examples/workflows/example_complete_voice_agent.py
 ```
 
 For more details, see the [Examples README](examples/README.md).
@@ -361,6 +390,9 @@ ElevenLabs TTS with advanced voice control and multiple output formats.
 
 #### `speech_to_text(audio_file_path, audio_data, sample_rate, model, language, prompt, response_format)`
 OpenAI Whisper transcription with support for files or numpy arrays.
+
+#### `speech_to_text_elevenlabs(audio_file_path, audio_data, sample_rate, realtime, model_id, ...)`
+ElevenLabs Speech-to-Text with support for both real-time (WebSocket) and non-real-time (file upload) modes. Supports speaker diarization, timestamps, and language detection.
 
 #### `record_audio(duration, sample_rate, channels) -> np.ndarray`
 Record audio from default microphone. Returns numpy array.
