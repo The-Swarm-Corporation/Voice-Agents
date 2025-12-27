@@ -1,7 +1,5 @@
 # Voice-Agents
 
-<div align="center">
-
 **Enterprise-Grade Voice Agent Infrastructure for Production-Ready AI Applications**
 
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
@@ -10,27 +8,25 @@
 
 *Multi-provider voice synthesis and recognition with real-time streaming capabilities*
 
-[Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Examples](#-examples)
-
-</div>
+[Features](#features) • [Installation](#installation) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#swarms-integration)
 
 ---
 
-## 🌟 Overview
+## Overview
 
 **Voice-Agents** is a production-ready Python library for building enterprise-grade voice-enabled AI applications. Built by [Swarms Corporation](https://swarms.ai), it provides seamless integration with multiple TTS/STT providers including OpenAI, ElevenLabs, and Groq, with real-time streaming capabilities optimized for agent-based architectures.
 
 Whether you're building conversational AI assistants, voice-enabled agents, or real-time audio processing systems, Voice-Agents provides the infrastructure you need to go from prototype to production.
 
-### 🏢 Built by Swarms Corporation
+### Built by Swarms Corporation
 
 Voice-Agents is part of the [Swarms](https://github.com/kyegomez/swarms) ecosystem—the enterprise-grade, production-ready multi-agent orchestration framework. Learn more at [swarms.ai](https://swarms.ai) and [docs.swarms.world](https://docs.swarms.world).
 
 ---
 
-## ✨ Features
+## Features
 
-### 🎯 Core Capabilities
+### Core Capabilities
 
 - **Multi-Provider TTS Support**: Seamlessly switch between OpenAI, ElevenLabs, and Groq
 - **Real-Time Streaming**: Low-latency audio streaming for live agent interactions
@@ -38,7 +34,7 @@ Voice-Agents is part of the [Swarms](https://github.com/kyegomez/swarms) ecosyst
 - **Audio Processing**: Built-in utilities for recording, playback, and format conversion
 - **Production-Ready**: Enterprise-grade error handling, authentication, and logging
 
-### 🚀 Advanced Features
+### Advanced Features
 
 - **Streaming Callbacks**: Real-time TTS callbacks for agent streaming outputs
 - **Multiple Audio Formats**: Support for PCM, MP3, Opus, AAC, FLAC, and more
@@ -49,7 +45,7 @@ Voice-Agents is part of the [Swarms](https://github.com/kyegomez/swarms) ecosyst
 
 ---
 
-## 📦 Installation
+## Installation
 
 ### Basic Installation
 
@@ -74,7 +70,7 @@ pip install -e .
 
 ---
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Environment Setup
 
@@ -113,7 +109,7 @@ print(f"Transcribed: {transcription}")
 
 ---
 
-## 📚 Core Functions
+## Core Functions
 
 ### Text-to-Speech (OpenAI)
 
@@ -249,7 +245,7 @@ media_type = get_media_type_for_format("pcm_44100")
 
 ---
 
-## 🤖 Swarms Integration
+## Swarms Integration
 
 Voice-Agents is designed to work seamlessly with [Swarms](https://github.com/kyegomez/swarms), the enterprise-grade multi-agent orchestration framework.
 
@@ -325,7 +321,7 @@ results = swarm.run(
 
 ---
 
-## 📖 API Reference
+## API Reference
 
 ### Constants
 
@@ -369,7 +365,7 @@ Real-time TTS callback for agent streaming outputs. Automatically detects comple
 
 ---
 
-## 🎨 Use Cases
+## Use Cases
 
 ### Conversational AI Assistants
 Build voice-enabled chatbots and virtual assistants with natural, real-time speech synthesis.
@@ -388,7 +384,7 @@ Combine voice input/output with visual interfaces for rich, interactive experien
 
 ---
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables
 
@@ -413,7 +409,7 @@ ELEVENLABS_API_KEY=your-key-here
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 Voice-Agents is built by the community, for the community. We welcome contributions!
 
@@ -444,13 +440,13 @@ pre-commit install
 
 ---
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ---
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built by [Swarms Corporation](https://swarms.ai)
 - Part of the [Swarms](https://github.com/kyegomez/swarms) ecosystem
@@ -458,7 +454,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-## 📞 Support & Community
+## Support & Community
 
 - **Documentation**: [GitHub Repository](https://github.com/The-Swarm-Corporation/Voice-Agents)
 - **Swarms Documentation**: [docs.swarms.world](https://docs.swarms.world)
@@ -469,7 +465,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 <div align="center">
 
-**Made with ❤️ by [Swarms Corporation](https://swarms.ai)**
+**Made by [Swarms Corporation](https://swarms.ai)**
 
 [Website](https://swarms.ai) • [Documentation](https://docs.swarms.world) • [GitHub](https://github.com/kyegomez/swarms)
 
