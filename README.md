@@ -2,7 +2,7 @@
 
 # 🗣️ Voice-Agents
 
-*The Enterprise-Grade Voice Agent Infrastructure*
+*Enterprise-Grade Voice Agent Framework*
 
 <br>
 
