@@ -70,6 +70,7 @@ numpy = "*"
 sounddevice = "*"
 python-dotenv = "*"
 soundfile = "*"
+loguru = "*"
 
 [tool.poetry.group.lint.dependencies]
 black = ">=23.1,<26.0"

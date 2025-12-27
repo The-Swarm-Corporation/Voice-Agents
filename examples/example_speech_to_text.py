@@ -5,13 +5,12 @@ Demonstrates how to use OpenAI's Whisper API to convert speech to text.
 Shows both file-based and audio data transcription.
 """
 
-from voice_agents import speech_to_text, record_audio
-import numpy as np
-import sounddevice as sd
 
 # Example 1: Transcribe from audio file
 print("Example 1: Transcribe from audio file")
-print("Note: This requires an audio file. Uncomment and provide a file path.")
+print(
+    "Note: This requires an audio file. Uncomment and provide a file path."
+)
 # text = speech_to_text(audio_file_path="path/to/your/audio.wav")
 # print(f"Transcribed text: {text}")
 print("Example 1 skipped (no audio file provided)\n")
@@ -27,7 +26,9 @@ print()
 # print("Recording complete. Transcribing...")
 # text = speech_to_text(audio_data=audio_data, sample_rate=16000)
 # print(f"Transcribed text: {text}")
-print("Example 2 skipped (commented out to avoid accidental recording)\n")
+print(
+    "Example 2 skipped (commented out to avoid accidental recording)\n"
+)
 
 # Example 3: Transcribe with different models
 print("Example 3: Transcribe with different models")
@@ -92,7 +93,8 @@ print("2. Transcribe to text")
 print("3. Convert text back to speech")
 print()
 print("Uncomment to run:")
-print("""
+print(
+    """
 from voice_agents import record_audio, speech_to_text, stream_tts
 
 # Step 1: Record
@@ -107,5 +109,5 @@ print(f"You said: {text}")
 # Step 3: Speak back
 print("Speaking back...")
 stream_tts([f"You said: {text}"], voice="alloy")
-""")
-
+"""
+)

@@ -51,4 +51,3 @@ print("Example 5 - Text with decimals:")
 print(f"Original: {text5}")
 print(f"Chunks: {chunks5}")
 print()
-

@@ -46,4 +46,3 @@ audio_data = (chord * 32767).astype(np.int16)
 
 play_audio(audio_data)
 print("Chord playback complete!")
-

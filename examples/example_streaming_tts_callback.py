@@ -20,7 +20,7 @@ streaming_text = [
     "The callback will ",
     "detect complete sentences ",
     "and convert them to speech. ",
-    "Pretty cool, right?"
+    "Pretty cool, right?",
 ]
 
 print("Simulating streaming text chunks...")
@@ -35,7 +35,9 @@ print("Streaming complete!\n")
 
 # Example 2: Custom voice and model
 print("Example 2: Custom voice and model")
-callback_nova = StreamingTTSCallback(voice="nova", model="openai/tts-1-hd")
+callback_nova = StreamingTTSCallback(
+    voice="nova", model="openai/tts-1-hd"
+)
 print("Using nova voice with openai/tts-1-hd model...")
 
 streaming_text2 = [
@@ -43,7 +45,7 @@ streaming_text2 = [
     "a different voice. ",
     "The nova voice ",
     "sounds distinct ",
-    "from alloy."
+    "from alloy.",
 ]
 
 for chunk in streaming_text2:
@@ -55,8 +57,7 @@ print("Custom voice example complete!\n")
 print("Example 3: Custom minimum sentence length")
 # Set minimum length to 20 characters
 callback_long = StreamingTTSCallback(
-    voice="alloy",
-    min_sentence_length=20
+    voice="alloy", min_sentence_length=20
 )
 print("Minimum sentence length set to 20 characters...")
 
@@ -64,7 +65,7 @@ streaming_text3 = [
     "Short. ",  # Too short, won't trigger
     "This is a longer sentence that will trigger. ",  # Will trigger
     "Another short one. ",  # Too short
-    "This is also long enough to be converted to speech. "  # Will trigger
+    "This is also long enough to be converted to speech. ",  # Will trigger
 ]
 
 for chunk in streaming_text3:
@@ -77,16 +78,20 @@ print("Minimum length example complete!\n")
 print("Example 4: Simulating agent streaming output")
 print("This mimics how an AI agent might stream its response...")
 
+
 def simulate_agent_response():
     """Simulate an agent generating a response word by word."""
-    response = "I can help you with that question. Let me think about the best approach. " \
-               "First, I'll analyze the problem. Then, I'll provide a solution. " \
-               "Does that sound good to you?"
-    
+    response = (
+        "I can help you with that question. Let me think about the best approach. "
+        "First, I'll analyze the problem. Then, I'll provide a solution. "
+        "Does that sound good to you?"
+    )
+
     # Split into word-like chunks (simulating token streaming)
     words = response.split()
     for word in words:
         yield word + " "
+
 
 callback_agent = StreamingTTSCallback(voice="alloy")
 print("Agent is thinking and speaking...")
@@ -105,7 +110,7 @@ streaming_text4 = [
     "This will work fine. ",
     "Even if there's an issue, ",
     "the callback continues. ",
-    "Pretty robust!"
+    "Pretty robust!",
 ]
 
 for chunk in streaming_text4:
@@ -119,7 +124,8 @@ print("Error handling example complete!\n")
 
 # Example 6: Integration with agent frameworks
 print("Example 6: Integration with agent frameworks")
-print("""
+print(
+    """
 To use with an agent framework (like LangChain, AutoGen, etc.):
 
 from voice_agents import StreamingTTSCallback
@@ -136,6 +142,6 @@ response = agent.run("Tell me about artificial intelligence")
 
 # Don't forget to flush at the end
 tts_callback.flush()
-""")
+"""
+)
 print("Integration example (code shown above)")
-

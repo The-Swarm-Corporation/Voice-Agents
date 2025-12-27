@@ -45,13 +45,16 @@ audio4 = record_audio(duration=2.0)
 # Save to WAV file
 try:
     import soundfile as sf
+
     output_file = "recorded_audio.wav"
     # Convert int16 to float32 for soundfile
     audio_float = audio4.astype(np.float32) / 32768.0
     sf.write(output_file, audio_float, 16000)
     print(f"Audio saved to: {output_file}")
 except ImportError:
-    print("soundfile library not available. Install with: pip install soundfile")
+    print(
+        "soundfile library not available. Install with: pip install soundfile"
+    )
 print()
 
 # Example 5: Record and analyze audio
@@ -64,7 +67,9 @@ max_amplitude = np.max(np.abs(audio5))
 rms = np.sqrt(np.mean(audio5.astype(np.float32) ** 2))
 print(f"Maximum amplitude: {max_amplitude}")
 print(f"RMS (root mean square): {rms:.2f}")
-print(f"Audio level: {'Loud' if rms > 1000 else 'Quiet' if rms < 100 else 'Normal'}")
+print(
+    f"Audio level: {'Loud' if rms > 1000 else 'Quiet' if rms < 100 else 'Normal'}"
+)
 print()
 
 # Example 6: Record multiple segments
@@ -80,7 +85,9 @@ for i in range(3):
 # Concatenate segments
 if segments:
     combined = np.concatenate(segments)
-    print(f"Combined audio: {len(combined)} samples ({len(combined)/16000:.2f} seconds)")
+    print(
+        f"Combined audio: {len(combined)} samples ({len(combined)/16000:.2f} seconds)"
+    )
 print("Multiple segment recording complete!\n")
 
 # Example 7: Record with different channels
@@ -94,7 +101,8 @@ print()
 # Example 8: Use recorded audio with speech_to_text
 print("Example 8: Use recorded audio with speech_to_text")
 print("This demonstrates recording and then transcribing:")
-print("""
+print(
+    """
 from voice_agents import record_audio, speech_to_text
 
 # Record audio
@@ -105,6 +113,8 @@ audio = record_audio(duration=5.0, sample_rate=16000)
 print("Transcribing...")
 text = speech_to_text(audio_data=audio, sample_rate=16000)
 print(f"Transcribed text: {text}")
-""")
-print("Example 8 skipped (commented out to avoid accidental recording)")
-
+"""
+)
+print(
+    "Example 8 skipped (commented out to avoid accidental recording)"
+)
