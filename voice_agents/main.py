@@ -92,6 +92,18 @@ ELEVENLABS_VOICES: dict[str, str] = {
 # List of available Eleven Labs voice names (for easy reference)
 ELEVENLABS_VOICE_NAMES: List[str] = list(ELEVENLABS_VOICES.keys())
 
+# Available TTS models by provider
+OPENAI_TTS_MODELS: List[str] = [
+    "tts-1",
+    "tts-1-hd",
+]
+
+ELEVENLABS_TTS_MODELS: List[str] = [
+    "eleven_multilingual_v2",
+    "eleven_turbo_v2",
+    "eleven_monolingual_v1",
+]
+
 
 def format_text_for_speech(text: str) -> List[str]:
     """
@@ -524,9 +536,124 @@ def stream_tts_openai(
                 ) from e
 
 
+def list_models() -> List[dict[str, str]]:
+    """
+    List all available TTS models with their providers.
+    
+    Returns:
+        List[dict[str, str]]: A list of dictionaries, each containing:
+            - "model": The full model identifier (e.g., "openai/tts-1")
+            - "provider": The provider name (e.g., "openai", "elevenlabs")
+            - "model_name": The model name without provider prefix (e.g., "tts-1")
+    
+    Example:
+        >>> models = list_models()
+        >>> for model in models:
+        ...     print(f"{model['model']} ({model['provider']})")
+        openai/tts-1 (openai)
+        openai/tts-1-hd (openai)
+        elevenlabs/eleven_multilingual_v2 (elevenlabs)
+        ...
+    """
+    models = []
+    
+    # Add OpenAI models
+    for model_name in OPENAI_TTS_MODELS:
+        models.append({
+            "model": f"openai/{model_name}",
+            "provider": "openai",
+            "model_name": model_name,
+        })
+    
+    # Add ElevenLabs models
+    for model_name in ELEVENLABS_TTS_MODELS:
+        models.append({
+            "model": f"elevenlabs/{model_name}",
+            "provider": "elevenlabs",
+            "model_name": model_name,
+        })
+    
+    return models
+
+
+def list_voices() -> List[dict[str, Union[str, None]]]:
+    """
+    List all available TTS voices with their providers.
+    
+    Returns:
+        List[dict[str, Union[str, None]]]: A list of dictionaries, each containing:
+            - "voice": The voice identifier (e.g., "alloy", "rachel")
+            - "provider": The provider name (e.g., "openai", "elevenlabs")
+            - "voice_id": The voice ID (for ElevenLabs) or None (for OpenAI)
+            - "description": Optional description of the voice (for ElevenLabs)
+    
+    Example:
+        >>> voices = list_voices()
+        >>> for voice in voices:
+        ...     print(f"{voice['voice']} ({voice['provider']})")
+        alloy (openai)
+        nova (openai)
+        rachel (elevenlabs)
+        ...
+    """
+    voices = []
+    
+    # Add OpenAI voices
+    for voice_name in VOICES:
+        voices.append({
+            "voice": voice_name,
+            "provider": "openai",
+            "voice_id": None,
+            "description": None,
+        })
+    
+    # Add ElevenLabs voices
+    # Extract descriptions from comments if available
+    voice_descriptions = {
+        "rachel": "Professional female voice",
+        "domi": "Confident female voice",
+        "bella": "Soft female voice",
+        "antoni": "Deep male voice",
+        "elli": "Expressive female voice",
+        "josh": "Deep male voice",
+        "arnold": "British male voice",
+        "adam": "American male voice",
+        "sam": "American male voice",
+        "nicole": "Professional female voice",
+        "glinda": "Warm female voice",
+        "giovanni": "Italian male voice",
+        "mimi": "Playful female voice",
+        "freya": "British female voice",
+        "shimmer": "Soft female voice",
+        "grace": "Professional female voice",
+        "daniel": "British male voice",
+        "lily": "Young female voice",
+        "dorothy": "Mature female voice",
+        "charlie": "American male voice",
+        "fin": "Irish male voice",
+        "sarah": "Professional female voice",
+        "michelle": "Warm female voice",
+        "ryan": "American male voice",
+        "paul": "British male voice",
+        "drew": "American male voice",
+        "clyde": "Deep male voice",
+        "dave": "American male voice",
+    }
+    
+    for voice_name, voice_id in ELEVENLABS_VOICES.items():
+        voices.append({
+            "voice": voice_name,
+            "provider": "elevenlabs",
+            "voice_id": voice_id,
+            "description": voice_descriptions.get(voice_name),
+        })
+    
+    return voices
+
+
 def stream_tts(
     text_chunks: Union[List[str], Iterable[str]],
-    model: str = "tts-1",
+    model: str = "openai/tts-1",
     voice: Optional[str] = None,
     stream_mode: bool = False,
     return_generator: bool = False,
@@ -548,9 +675,10 @@ def stream_tts(
     
     Args:
         text_chunks (Union[List[str], Iterable[str]]): A list or iterable of text strings to convert to speech.
-        model (str): The model name to use. Determines the provider:
-            - OpenAI models: "tts-1", "tts-1-hd" (default: "tts-1")
-            - ElevenLabs models: "eleven_multilingual_v2", "eleven_turbo_v2", etc.
+        model (str): The model name to use in format "provider/model_name". Determines the provider:
+            - OpenAI models: "openai/tts-1", "openai/tts-1-hd" (default: "openai/tts-1")
+            - ElevenLabs models: "elevenlabs/eleven_multilingual_v2", "elevenlabs/eleven_turbo_v2", etc.
+            - For backward compatibility, also accepts "tts-1", "tts-1-hd", "eleven_multilingual_v2", etc.
         voice (Optional[str]): Voice identifier. For OpenAI, use voice names like "alloy", "nova", etc.
             For ElevenLabs, use friendly names like "rachel", "domi", etc. or voice IDs.
             If not provided, defaults to "alloy" for OpenAI or requires voice_id for ElevenLabs.
@@ -566,7 +694,7 @@ def stream_tts(
         output_format (Optional[str]): ElevenLabs-specific output format. Options include "pcm_44100", "mp3_44100_128", etc.
             Default is "pcm_44100" for ElevenLabs. Ignored for OpenAI.
         optimize_streaming_latency (Optional[int]): ElevenLabs-specific latency optimization (0-4). Ignored for OpenAI.
-        enable_logging (bool): ElevenLabs-specific logging setting. Default is True. Ignored for OpenAI.
+        enable_logging (bool): ElevenLabs-specific logging setting. Default is True. Ignored for ElevenLabs.
     
     Returns:
         Union[None, Generator[bytes, None, None]]: 
@@ -574,25 +702,50 @@ def stream_tts(
             - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
     
     Example:
-        >>> # Using OpenAI
-        >>> stream_tts(["Hello world"], model="tts-1", voice="alloy")
+        >>> # Using OpenAI with new format
+        >>> stream_tts(["Hello world"], model="openai/tts-1", voice="alloy")
         >>> 
-        >>> # Using ElevenLabs
-        >>> stream_tts(["Hello world"], model="eleven_multilingual_v2", voice="rachel")
+        >>> # Using ElevenLabs with new format
+        >>> stream_tts(["Hello world"], model="elevenlabs/eleven_multilingual_v2", voice="rachel")
+        >>> 
+        >>> # Backward compatible (old format still works)
+        >>> stream_tts(["Hello world"], model="tts-1", voice="alloy")
         >>> 
         >>> # Get generator for FastAPI
         >>> generator = stream_tts(
         ...     ["Hello world"], 
-        ...     model="tts-1", 
+        ...     model="openai/tts-1", 
         ...     voice="alloy", 
         ...     return_generator=True
         ... )
     """
-    # Detect provider from model name
-    model_lower = model.lower()
+    # Parse model name to extract provider and model
+    provider = None
+    model_name = model
     
-    # Check if it's an OpenAI model
-    if model_lower.startswith("tts-1"):
+    # Check if model is in provider/model_name format
+    if "/" in model:
+        parts = model.split("/", 1)
+        if len(parts) == 2:
+            provider = parts[0].lower()
+            model_name = parts[1]
+    
+    # If no provider prefix, try to infer from model name (backward compatibility)
+    if provider is None:
+        model_lower = model_name.lower()
+        
+        # Check if it's an OpenAI model
+        if model_lower.startswith("tts-1"):
+            provider = "openai"
+        # Check if it's an ElevenLabs model
+        elif model_lower.startswith("eleven_"):
+            provider = "elevenlabs"
+        else:
+            # Default to OpenAI for backward compatibility
+            provider = "openai"
+    
+    # Route to appropriate provider
+    if provider == "openai":
         # Use OpenAI
         if voice is None:
             voice = "alloy"  # Default OpenAI voice
@@ -604,14 +757,13 @@ def stream_tts(
         return stream_tts_openai(
             text_chunks=text_chunks,
             voice=voice,  # type: ignore
-            model=model,
+            model=model_name,
             stream_mode=stream_mode,
             response_format=response_format,
             return_generator=return_generator,
         )
     
-    # Check if it's an ElevenLabs model
-    elif model_lower.startswith("eleven_"):
+    elif provider == "elevenlabs":
         # Use ElevenLabs
         # Determine voice_id: use voice_id parameter if provided, otherwise use voice parameter
         if voice_id is None:
@@ -632,7 +784,7 @@ def stream_tts(
         return stream_tts_elevenlabs(
             text_chunks=text_chunks,
             voice_id=voice_id,
-            model_id=model,
+            model_id=model_name,
             stability=stability,
             similarity_boost=similarity_boost,
             output_format=output_format,
@@ -643,22 +795,9 @@ def stream_tts(
         )
     
     else:
-        # Unknown model, try to infer provider
-        # Default to OpenAI for backward compatibility
-        if voice is None:
-            voice = "alloy"
-        
-        if response_format is None:
-            response_format = "pcm"
-        
-        # Try OpenAI first (backward compatibility)
-        return stream_tts_openai(
-            text_chunks=text_chunks,
-            voice=voice,  # type: ignore
-            model=model,
-            stream_mode=stream_mode,
-            response_format=response_format,
-            return_generator=return_generator,
+        raise ValueError(
+            f"Unknown provider: {provider}. Supported providers are 'openai' and 'elevenlabs'. "
+            f"Use format 'provider/model_name' (e.g., 'openai/tts-1' or 'elevenlabs/eleven_multilingual_v2')."
         )
 
 
@@ -1332,14 +1471,15 @@ class StreamingTTSCallback:
     
     Args:
         voice: The voice to use for TTS. Default is "alloy".
-        model: The TTS model to use. Default is "tts-1".
+        model: The TTS model to use in format "provider/model_name". Default is "openai/tts-1".
+            Examples: "openai/tts-1", "openai/tts-1-hd", "elevenlabs/eleven_multilingual_v2"
         min_sentence_length: Minimum length before sending a sentence to TTS. Default is 10.
     """
     
     def __init__(
         self,
         voice: str = "alloy",
-        model: str = "tts-1",
+        model: str = "openai/tts-1",
         min_sentence_length: int = 10,
     ):
         self.voice = voice

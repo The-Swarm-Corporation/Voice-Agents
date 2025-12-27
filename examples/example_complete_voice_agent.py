@@ -63,7 +63,7 @@ def simple_voice_agent():
     # Step 4: Convert response to speech
     print("Step 4: Converting response to speech...")
     chunks = format_text_for_speech(response)
-    stream_tts(chunks, voice="alloy")
+    stream_tts(chunks, model="openai/tts-1", voice="alloy")
     print("Response complete!")
     print()
 
@@ -96,7 +96,7 @@ def interactive_voice_agent():
             # Check for exit command
             if "quit" in user_text.lower() or "exit" in user_text.lower():
                 print("\nEnding conversation. Goodbye!")
-                stream_tts(["Goodbye! It was nice talking to you."], voice="alloy")
+                stream_tts(["Goodbye! It was nice talking to you."], model="openai/tts-1", voice="alloy")
                 break
             
             # Generate response
@@ -105,7 +105,7 @@ def interactive_voice_agent():
             
             # Speak response
             chunks = format_text_for_speech(response)
-            stream_tts(chunks, voice="alloy")
+            stream_tts(chunks, model="openai/tts-1", voice="alloy")
             
         except Exception as e:
             print(f"Error: {e}")
@@ -122,7 +122,7 @@ def streaming_voice_agent():
     print()
     
     # Create TTS callback
-    tts_callback = StreamingTTSCallback(voice="alloy", model="tts-1")
+    tts_callback = StreamingTTSCallback(voice="alloy", model="openai/tts-1")
     
     # Record user input
     print("Recording audio (5 seconds)...")
@@ -171,10 +171,13 @@ def voice_agent_with_elevenlabs():
     response = f"I heard you say: {user_text}. This response is being spoken using ElevenLabs' high-quality voice synthesis."
     print(f"Agent: {response}")
     
-    # Convert to speech with ElevenLabs
+    # Convert to speech with ElevenLabs using unified function
     print("Converting to speech with ElevenLabs...")
     chunks = format_text_for_speech(response)
-    stream_tts_elevenlabs(chunks, voice_id="rachel")
+    # Using unified stream_tts function
+    stream_tts(chunks, model="elevenlabs/eleven_multilingual_v2", voice="rachel")
+    # Alternative: Using direct function
+    # stream_tts_elevenlabs(chunks, voice_id="rachel")
     print("Response complete!")
 
 

@@ -9,7 +9,7 @@ from voice_agents import StreamingTTSCallback
 
 # Example 1: Basic usage with streaming text
 print("Example 1: Basic usage with streaming text")
-callback = StreamingTTSCallback(voice="alloy", model="tts-1")
+callback = StreamingTTSCallback(voice="alloy", model="openai/tts-1")
 
 # Simulate streaming text from an agent
 streaming_text = [
@@ -35,8 +35,8 @@ print("Streaming complete!\n")
 
 # Example 2: Custom voice and model
 print("Example 2: Custom voice and model")
-callback_nova = StreamingTTSCallback(voice="nova", model="tts-1-hd")
-print("Using nova voice with tts-1-hd model...")
+callback_nova = StreamingTTSCallback(voice="nova", model="openai/tts-1-hd")
+print("Using nova voice with openai/tts-1-hd model...")
 
 streaming_text2 = [
     "This is using ",

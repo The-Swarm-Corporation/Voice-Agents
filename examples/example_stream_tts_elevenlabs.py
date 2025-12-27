@@ -1,25 +1,56 @@
 """
-Example: stream_tts_elevenlabs
+Example: Unified stream_tts with ElevenLabs
 
-Demonstrates how to use ElevenLabs TTS API to convert text to speech.
+Demonstrates how to use the unified stream_tts function with ElevenLabs models.
 Shows different voices, formats, and streaming modes.
+Also shows how to use the direct stream_tts_elevenlabs function.
 """
 
-from voice_agents import stream_tts_elevenlabs, format_text_for_speech, ELEVENLABS_VOICE_NAMES
+from voice_agents import (
+    stream_tts,
+    stream_tts_elevenlabs,
+    format_text_for_speech,
+    list_models,
+    list_voices,
+    ELEVENLABS_VOICE_NAMES
+)
 
-# Example 1: Simple TTS with friendly voice name
-print("Example 1: Simple TTS with friendly voice name (rachel)")
-text1 = "Hello! This is a test of ElevenLabs text-to-speech API."
-stream_tts_elevenlabs([text1], voice_id="rachel")
+# Example 0: List available models and voices
+print("Example 0: Available Models and Voices")
+models = list_models()
+elevenlabs_models = [m for m in models if m['provider'] == 'elevenlabs']
+print("Available ElevenLabs models:")
+for model in elevenlabs_models:
+    print(f"  {model['model']}")
+print()
+
+voices = list_voices()
+elevenlabs_voices = [v for v in voices if v['provider'] == 'elevenlabs']
+print(f"Available ElevenLabs voices: {len(elevenlabs_voices)}")
+print("First 5 voices:")
+for voice in elevenlabs_voices[:5]:
+    print(f"  {voice['voice']} - {voice['description']}")
+print()
+
+# Example 1: Simple TTS with unified stream_tts function
+print("Example 1: Using unified stream_tts with ElevenLabs")
+text1 = "Hello! This is a test of ElevenLabs text-to-speech API using the unified function."
+stream_tts([text1], model="elevenlabs/eleven_multilingual_v2", voice="rachel")
 print("Playback complete!\n")
 
-# Example 2: Using different ElevenLabs voices
-print("Example 2: Trying different ElevenLabs voices")
+# Example 1b: Using direct stream_tts_elevenlabs function
+print("Example 1b: Using direct stream_tts_elevenlabs function")
+text1b = "This is using the direct ElevenLabs function."
+stream_tts_elevenlabs([text1b], voice_id="rachel")
+print("Playback complete!\n")
+
+# Example 2: Using different ElevenLabs voices with unified function
+print("Example 2: Trying different ElevenLabs voices with unified stream_tts")
 text2 = "This is a demonstration of different voice options."
 voices_to_try = ["rachel", "domi", "antoni", "bella"]
 for voice in voices_to_try:
     print(f"Playing with voice: {voice}")
-    stream_tts_elevenlabs([text2], voice_id=voice)
+    stream_tts([text2], model="elevenlabs/eleven_multilingual_v2", voice=voice)
     print()
 
 # Example 3: Using formatted text chunks
@@ -31,8 +62,8 @@ You can customize stability and similarity settings.
 """
 chunks = format_text_for_speech(long_text)
 print(f"Text split into {len(chunks)} chunks")
-print("Playing formatted chunks...")
-stream_tts_elevenlabs(chunks, voice_id="rachel")
+print("Playing formatted chunks with unified function...")
+stream_tts(chunks, model="elevenlabs/eleven_multilingual_v2", voice="rachel")
 print("Playback complete!\n")
 
 # Example 4: Custom voice settings
@@ -56,8 +87,8 @@ text_chunks = [
     "Second chunk of text.",
     "Third chunk of text."
 ]
-print("Processing chunks in stream mode...")
-stream_tts_elevenlabs(text_chunks, voice_id="rachel", stream_mode=True)
+print("Processing chunks in stream mode with unified function...")
+stream_tts(text_chunks, model="elevenlabs/eleven_multilingual_v2", voice="rachel", stream_mode=True)
 print("Stream mode playback complete!\n")
 
 # Example 6: Different output formats
@@ -69,12 +100,14 @@ print("Playing with PCM 44100 format...")
 stream_tts_elevenlabs([text6], voice_id="rachel", output_format="pcm_44100")
 print("Format example complete!\n")
 
-# Example 7: List available voices
-print("Example 7: Available ElevenLabs voices")
-print(f"Total voices available: {len(ELEVENLABS_VOICE_NAMES)}")
-print("First 10 voices:")
-for i, voice in enumerate(ELEVENLABS_VOICE_NAMES[:10], 1):
-    print(f"  {i}. {voice}")
+# Example 7: List available voices using list_voices()
+print("Example 7: Available ElevenLabs voices using list_voices()")
+elevenlabs_voices = [v for v in list_voices() if v['provider'] == 'elevenlabs']
+print(f"Total voices available: {len(elevenlabs_voices)}")
+print("First 10 voices with descriptions:")
+for i, voice in enumerate(elevenlabs_voices[:10], 1):
+    desc = voice['description'] or "No description"
+    print(f"  {i}. {voice['voice']:15} - {desc}")
 print("...")
 
 # Example 8: Generator mode (for API streaming)

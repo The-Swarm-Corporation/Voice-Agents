@@ -1,16 +1,26 @@
 """
-Example: stream_tts (OpenAI TTS)
+Example: stream_tts (Unified TTS with OpenAI)
 
-Demonstrates how to use OpenAI's TTS API to convert text to speech.
+Demonstrates how to use the unified stream_tts function with OpenAI models.
 Shows different modes: batch processing, streaming, and generator mode.
+Also demonstrates listing available models.
 """
 
-from voice_agents import stream_tts, format_text_for_speech, VOICES
+from voice_agents import stream_tts, format_text_for_speech, list_models, VOICES
 
-# Example 1: Simple TTS with default voice
-print("Example 1: Simple TTS with default voice (alloy)")
+# Example 0: List available models
+print("Example 0: Available TTS Models")
+models = list_models()
+print("Available models:")
+for model in models:
+    if model['provider'] == 'openai':
+        print(f"  {model['model']} ({model['provider']})")
+print()
+
+# Example 1: Simple TTS with default voice and model
+print("Example 1: Simple TTS with default voice (alloy) and model (openai/tts-1)")
 text1 = "Hello! This is a test of OpenAI's text-to-speech API."
-stream_tts([text1], voice="alloy")
+stream_tts([text1], model="openai/tts-1", voice="alloy")
 print("Playback complete!\n")
 
 # Example 2: TTS with different voices
@@ -18,7 +28,7 @@ print("Example 2: Trying different voices")
 text2 = "This is the nova voice. It sounds different from alloy."
 for voice in ["alloy", "nova", "shimmer"]:
     print(f"Playing with voice: {voice}")
-    stream_tts([text2], voice=voice)
+    stream_tts([text2], model="openai/tts-1", voice=voice)
     print()
 
 # Example 3: Using formatted text chunks
@@ -33,7 +43,7 @@ print(f"Text split into {len(chunks)} chunks:")
 for i, chunk in enumerate(chunks, 1):
     print(f"  {i}. {chunk}")
 print("\nPlaying formatted chunks...")
-stream_tts(chunks, voice="alloy")
+stream_tts(chunks, model="openai/tts-1", voice="alloy")
 print("Playback complete!\n")
 
 # Example 4: Stream mode (process chunks as they arrive)
@@ -44,16 +54,16 @@ text_chunks = [
     "Third chunk of text."
 ]
 print("Processing chunks in stream mode...")
-stream_tts(text_chunks, voice="alloy", stream_mode=True)
+stream_tts(text_chunks, model="openai/tts-1", voice="alloy", stream_mode=True)
 print("Stream mode playback complete!\n")
 
 # Example 5: Different models
 print("Example 5: Using different TTS models")
-text5 = "This is using the tts-1 model."
-print("Using tts-1 model...")
-stream_tts([text5], voice="alloy", model="tts-1")
-print("Using tts-1-hd model (higher quality)...")
-stream_tts([text5], voice="alloy", model="tts-1-hd")
+text5 = "This is using different OpenAI models."
+print("Using openai/tts-1 model...")
+stream_tts([text5], voice="alloy", model="openai/tts-1")
+print("Using openai/tts-1-hd model (higher quality)...")
+stream_tts([text5], voice="alloy", model="openai/tts-1-hd")
 print("Model comparison complete!\n")
 
 # Example 6: Generator mode (for API streaming)
@@ -62,7 +72,7 @@ print("Note: This example shows how to get a generator, but doesn't play audio."
 text6 = "This would be streamed in an API response."
 
 # Get generator (for use with FastAPI StreamingResponse)
-# generator = stream_tts([text6], voice="alloy", return_generator=True)
+# generator = stream_tts([text6], model="openai/tts-1", voice="alloy", return_generator=True)
 # 
 # # In a FastAPI endpoint, you would use:
 # # from fastapi.responses import StreamingResponse

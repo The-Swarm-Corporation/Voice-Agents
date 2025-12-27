@@ -4,6 +4,8 @@ from voice_agents.main import (
     VOICES,
     ELEVENLABS_VOICES,
     ELEVENLABS_VOICE_NAMES,
+    OPENAI_TTS_MODELS,
+    ELEVENLABS_TTS_MODELS,
     # Type aliases
     VoiceType,
     # Functions
@@ -12,6 +14,8 @@ from voice_agents.main import (
     stream_tts,
     stream_tts_openai,
     stream_tts_elevenlabs,
+    list_models,
+    list_voices,
     get_media_type_for_format,
     speech_to_text,
     record_audio,
@@ -25,6 +29,8 @@ __all__ = [
     "VOICES",
     "ELEVENLABS_VOICES",
     "ELEVENLABS_VOICE_NAMES",
+    "OPENAI_TTS_MODELS",
+    "ELEVENLABS_TTS_MODELS",
     # Type aliases
     "VoiceType",
     # Functions
@@ -33,6 +39,8 @@ __all__ = [
     "stream_tts",
     "stream_tts_openai",
     "stream_tts_elevenlabs",
+    "list_models",
+    "list_voices",
     "get_media_type_for_format",
     "speech_to_text",
     "record_audio",

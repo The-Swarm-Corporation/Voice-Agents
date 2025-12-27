@@ -97,7 +97,7 @@ text = "Hello! This is a voice agent speaking. How can I help you today?"
 chunks = format_text_for_speech(text)
 
 # Convert to speech and play
-stream_tts(chunks, voice="alloy", model="tts-1")
+stream_tts(chunks, model="openai/tts-1", voice="alloy")
 ```
 
 ### Speech-to-Text
@@ -126,13 +126,13 @@ from voice_agents import stream_tts, format_text_for_speech, VOICES
 text_chunks = format_text_for_speech("Your text here")
 
 # Basic usage - plays audio
-stream_tts(text_chunks, voice="nova", model="tts-1")
+stream_tts(text_chunks, model="openai/tts-1", voice="nova")
 
 # Streaming mode for real-time processing
 stream_tts(
     text_chunks,
+    model="openai/tts-1",
     voice="alloy",
-    model="tts-1",
     stream_mode=True,  # Process chunks as they arrive
     response_format="pcm"
 )
@@ -225,7 +225,7 @@ from voice_agents import StreamingTTSCallback
 # Create callback for real-time agent responses
 tts_callback = StreamingTTSCallback(
     voice="alloy",
-    model="tts-1",
+    model="openai/tts-1",
     min_sentence_length=10  # Minimum chars before speaking
 )
 
@@ -275,7 +275,7 @@ agent = Agent(
 )
 
 # Create the streaming TTS callback
-tts_callback = StreamingTTSCallback(voice="alloy", model="tts-1")
+tts_callback = StreamingTTSCallback(voice="alloy", model="openai/tts-1")
 
 # Run the agent with streaming TTS callback
 out = agent.run(
@@ -291,6 +291,38 @@ print(out)
 
 ---
 
+## Examples
+
+The `examples/` directory contains comprehensive examples demonstrating all features of Voice-Agents. See the [Examples README](examples/README.md) for detailed documentation.
+
+### Examples Table
+
+| #   | Example File                                                          | Description                                          | Category          |
+| --- | --------------------------------------------------------------------- | ---------------------------------------------------- | ----------------- |
+| 1   | [`example_format_text_for_speech.py`](examples/example_format_text_for_speech.py) | Text formatting for speech with abbreviation handling | Core Functions     |
+| 2   | [`example_play_audio.py`](examples/example_play_audio.py)                     | Audio playback and tone generation                   | Core Functions     |
+| 3   | [`example_stream_tts.py`](examples/example_stream_tts.py)                     | Unified TTS with OpenAI models, `list_models()`     | Core Functions     |
+| 4   | [`example_stream_tts_elevenlabs.py`](examples/example_stream_tts_elevenlabs.py) | ElevenLabs TTS, unified and direct functions         | Core Functions     |
+| 5   | [`example_speech_to_text.py`](examples/example_speech_to_text.py)              | OpenAI Whisper transcription                        | Core Functions     |
+| 6   | [`example_record_audio.py`](examples/example_record_audio.py)                 | Microphone audio recording                          | Core Functions     |
+| 7   | [`example_streaming_tts_callback.py`](examples/example_streaming_tts_callback.py) | StreamingTTSCallback for real-time TTS               | Utilities          |
+| 8   | [`example_get_media_type.py`](examples/example_get_media_type.py)            | Media type (MIME) utilities for FastAPI             | Utilities          |
+| 9   | [`example_voice_selection.py`](examples/example_voice_selection.py)            | Voice selection with `list_voices()`                 | Utilities          |
+| 10  | [`example_complete_voice_agent.py`](examples/example_complete_voice_agent.py)  | Complete voice agent workflows                      | Complete Workflows |
+
+### Running Examples
+
+```bash
+# Run a specific example
+python examples/example_stream_tts.py
+python examples/example_speech_to_text.py
+python examples/example_complete_voice_agent.py
+```
+
+For more details, see the [Examples README](examples/README.md).
+
+---
+
 ## API Reference
 
 ### Constants
@@ -299,6 +331,8 @@ print(out)
 - `VOICES`: List of available OpenAI voices
 - `ELEVENLABS_VOICES`: Dictionary mapping friendly names to ElevenLabs voice IDs
 - `ELEVENLABS_VOICE_NAMES`: List of available ElevenLabs voice names
+- `OPENAI_TTS_MODELS`: List of available OpenAI TTS models
+- `ELEVENLABS_TTS_MODELS`: List of available ElevenLabs TTS models
 - `VoiceType`: Type alias for OpenAI voice options
 
 ### Functions
@@ -306,7 +340,16 @@ print(out)
 #### `format_text_for_speech(text: str) -> List[str]`
 Intelligently formats text into speech-friendly chunks by detecting sentence boundaries, handling abbreviations, and preserving natural pauses.
 
-#### `stream_tts(text_chunks, voice, model, stream_mode, response_format, return_generator)`
+#### `stream_tts(text_chunks, model, voice, stream_mode, response_format, return_generator)`
+Unified TTS function supporting both OpenAI and ElevenLabs. Model format: `"provider/model_name"` (e.g., `"openai/tts-1"`, `"elevenlabs/eleven_multilingual_v2"`). Returns generator for web streaming or plays audio directly.
+
+#### `list_models() -> List[dict]`
+List all available TTS models with their providers. Returns list of dictionaries with `model`, `provider`, and `model_name` keys.
+
+#### `list_voices() -> List[dict]`
+List all available voices from all providers. Returns list of dictionaries with `voice`, `provider`, `voice_id`, and `description` keys.
+
+#### `stream_tts_openai(text_chunks, voice, model, stream_mode, response_format, return_generator)`
 OpenAI TTS with streaming support. Returns generator for web streaming or plays audio directly.
 
 #### `stream_tts_elevenlabs(text_chunks, voice_id, model_id, stability, similarity_boost, output_format, return_generator)`

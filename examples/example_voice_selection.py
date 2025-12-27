@@ -3,6 +3,7 @@ Example: Voice Selection and Constants
 
 Demonstrates the available voices and voice selection options
 for both OpenAI TTS and ElevenLabs TTS.
+Shows how to use the new list_voices() function.
 """
 
 from voice_agents import (
@@ -10,8 +11,20 @@ from voice_agents import (
     ELEVENLABS_VOICES,
     ELEVENLABS_VOICE_NAMES,
     VoiceType,
-    SAMPLE_RATE
+    SAMPLE_RATE,
+    list_voices
 )
+
+# Example 0: Using list_voices() function
+print("Example 0: Using list_voices() function")
+all_voices = list_voices()
+openai_voices = [v for v in all_voices if v['provider'] == 'openai']
+elevenlabs_voices = [v for v in all_voices if v['provider'] == 'elevenlabs']
+
+print(f"Total voices across all providers: {len(all_voices)}")
+print(f"  OpenAI: {len(openai_voices)} voices")
+print(f"  ElevenLabs: {len(elevenlabs_voices)} voices")
+print()
 
 # Example 1: OpenAI TTS Voices
 print("Example 1: Available OpenAI TTS Voices")
@@ -19,6 +32,12 @@ print(f"Total OpenAI voices: {len(VOICES)}")
 print("Available voices:")
 for i, voice in enumerate(VOICES, 1):
     print(f"  {i:2}. {voice}")
+print()
+
+# Alternative: Using list_voices()
+print("Alternative: Using list_voices() for OpenAI voices")
+for i, voice in enumerate(openai_voices, 1):
+    print(f"  {i:2}. {voice['voice']}")
 print()
 
 # Example 2: ElevenLabs Voices
@@ -29,6 +48,14 @@ for i, voice_name in enumerate(ELEVENLABS_VOICE_NAMES[:10], 1):
     voice_id = ELEVENLABS_VOICES[voice_name]
     print(f"  {i:2}. {voice_name:15} (ID: {voice_id})")
 print(f"  ... and {len(ELEVENLABS_VOICES) - 10} more")
+print()
+
+# Alternative: Using list_voices()
+print("Alternative: Using list_voices() for ElevenLabs voices")
+print("First 10 voices with descriptions:")
+for i, voice in enumerate(elevenlabs_voices[:10], 1):
+    desc = voice['description'] or "No description"
+    print(f"  {i:2}. {voice['voice']:15} - {desc:30} (ID: {voice['voice_id']})")
 print()
 
 # Example 3: Voice Type Checking
@@ -137,6 +164,10 @@ print("  stream_tts_elevenlabs(['Hello'], voice_id='rachel')  # Friendly name")
 print("  stream_tts_elevenlabs(['Hello'], voice_id='21m00Tcm4TlvDq8ikWAM')  # Direct ID")
 print()
 print("For OpenAI, use the voice names directly:")
-print("  stream_tts(['Hello'], voice='alloy')")
-print("  stream_tts(['Hello'], voice='nova')")
+print("  stream_tts(['Hello'], model='openai/tts-1', voice='alloy')")
+print("  stream_tts(['Hello'], model='openai/tts-1', voice='nova')")
+print()
+print("For ElevenLabs, use the unified stream_tts function:")
+print("  stream_tts(['Hello'], model='elevenlabs/eleven_multilingual_v2', voice='rachel')")
+print("  stream_tts(['Hello'], model='elevenlabs/eleven_multilingual_v2', voice='domi')")
 
