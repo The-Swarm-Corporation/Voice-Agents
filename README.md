@@ -2,34 +2,17 @@
 
 # 🗣️ Voice-Agents
 
-**Enterprise-Grade Voice Agent Infrastructure**  
-*For Production-Ready AI Applications*
+*The Enterprise-Grade Voice Agent Infrastructure*
 
 <br>
 
-<a href="LICENSE">
-  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg">
-</a>
-<a href="https://www.python.org/">
-  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-blue.svg">
-</a>
-<a href="https://swarms.ai">
-  <img alt="Made by Swarms" src="https://img.shields.io/badge/Made%20by-Swarms%20Corporation-black">
-</a>
-
-<br><br>
-
-*Multi-provider voice synthesis and recognition with real-time streaming capabilities*
+🏠 [Swarms Website](https://swarms.ai) • 📚 [Documentation](https://docs.swarms.world) • 📦 [Examples](#swarms-integration)
 
 <br>
 
-<p>
-  <a href="#features">Features</a> •
-  <a href="#installation">Installation</a> •
-  <a href="#quick-start">Quick Start</a> •
-  <a href="#documentation">Documentation</a> •
-  <a href="#swarms-integration">Examples</a>
-</p>
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
+[![GitHub stars](https://img.shields.io/github/stars/The-Swarm-Corporation/Voice-Agents?style=social&logo=github)](https://github.com/The-Swarm-Corporation/Voice-Agents)
 
 </div>
 
