@@ -1,6 +1,7 @@
 """
 - Add groq voice agents
 - Add 11even labs voice agents
+- Groq voice agents
 """
 
 import os
@@ -102,6 +103,31 @@ ELEVENLABS_TTS_MODELS: List[str] = [
     "eleven_multilingual_v2",
     "eleven_turbo_v2",
     "eleven_monolingual_v1",
+]
+
+# Groq TTS models
+GROQ_TTS_MODELS: List[str] = [
+    "canopylabs/orpheus-v1-english",
+    "canopylabs/orpheus-arabic-saudi",
+]
+
+# Groq STT models
+GROQ_STT_MODELS: List[str] = [
+    "whisper-large-v3-turbo",
+    "whisper-large-v3",
+]
+
+# Groq Orpheus English voices
+GROQ_ORPHEUS_ENGLISH_VOICES: List[str] = [
+    "austin",
+    "hannah",
+    "troy",
+]
+
+# Groq Orpheus Arabic voices
+GROQ_ORPHEUS_ARABIC_VOICES: List[str] = [
+    "salma",
+    "omar",
 ]
 
 
@@ -603,6 +629,16 @@ def list_models() -> List[dict[str, str]]:
             }
         )
 
+    # Add Groq TTS models
+    for model_name in GROQ_TTS_MODELS:
+        models.append(
+            {
+                "model": f"groq/{model_name}",
+                "provider": "groq",
+                "model_name": model_name,
+            }
+        )
+
     return models
 
 
@@ -682,6 +718,37 @@ def list_voices() -> List[dict[str, Union[str, None]]]:
             }
         )
 
+    # Add Groq Orpheus English voices
+    groq_english_descriptions = {
+        "austin": "Male English voice",
+        "hannah": "Female English voice",
+        "troy": "Male English voice",
+    }
+    for voice_name in GROQ_ORPHEUS_ENGLISH_VOICES:
+        voices.append(
+            {
+                "voice": voice_name,
+                "provider": "groq",
+                "voice_id": None,
+                "description": groq_english_descriptions.get(voice_name),
+            }
+        )
+
+    # Add Groq Orpheus Arabic voices
+    groq_arabic_descriptions = {
+        "salma": "Female Arabic (Saudi) voice",
+        "omar": "Male Arabic (Saudi) voice",
+    }
+    for voice_name in GROQ_ORPHEUS_ARABIC_VOICES:
+        voices.append(
+            {
+                "voice": voice_name,
+                "provider": "groq",
+                "voice_id": None,
+                "description": groq_arabic_descriptions.get(voice_name),
+            }
+        )
+
     return voices
 
 
@@ -712,10 +779,12 @@ def stream_tts(
         model (str): The model name to use in format "provider/model_name". Determines the provider:
             - OpenAI models: "openai/tts-1", "openai/tts-1-hd" (default: "openai/tts-1")
             - ElevenLabs models: "elevenlabs/eleven_multilingual_v2", "elevenlabs/eleven_turbo_v2", etc.
+            - Groq models: "groq/canopylabs/orpheus-v1-english", "groq/canopylabs/orpheus-arabic-saudi"
             - For backward compatibility, also accepts "tts-1", "tts-1-hd", "eleven_multilingual_v2", etc.
         voice (Optional[str]): Voice identifier. For OpenAI, use voice names like "alloy", "nova", etc.
             For ElevenLabs, use friendly names like "rachel", "domi", etc. or voice IDs.
-            If not provided, defaults to "alloy" for OpenAI or requires voice_id for ElevenLabs.
+            For Groq English: "austin", "hannah", "troy". For Groq Arabic: "salma", "omar".
+            If not provided, defaults to "alloy" for OpenAI or requires voice for Groq/ElevenLabs.
         stream_mode (bool): If True, process chunks as they arrive in real-time. Default is False.
         return_generator (bool): If True, returns a generator that yields audio chunks as bytes.
             If False, plays audio to system output. Default is False.
@@ -741,6 +810,9 @@ def stream_tts(
         >>>
         >>> # Using ElevenLabs with new format
         >>> stream_tts(["Hello world"], model="elevenlabs/eleven_multilingual_v2", voice="rachel")
+        >>>
+        >>> # Using Groq with new format
+        >>> stream_tts(["Hello world"], model="groq/canopylabs/orpheus-v1-english", voice="austin")
         >>>
         >>> # Backward compatible (old format still works)
         >>> stream_tts(["Hello world"], model="tts-1", voice="alloy")
@@ -774,6 +846,9 @@ def stream_tts(
         # Check if it's an ElevenLabs model
         elif model_lower.startswith("eleven_"):
             provider = "elevenlabs"
+        # Check if it's a Groq model
+        elif model_lower.startswith("canopylabs/") or model_lower.startswith("whisper-"):
+            provider = "groq"
         else:
             # Default to OpenAI for backward compatibility
             provider = "openai"
@@ -828,10 +903,32 @@ def stream_tts(
             return_generator=return_generator,
         )
 
+    elif provider == "groq":
+        # Use Groq
+        if voice is None:
+            raise ValueError(
+                "Voice must be provided for Groq models. "
+                "For English model: 'austin', 'hannah', or 'troy'. "
+                "For Arabic model: 'salma' or 'omar'."
+            )
+
+        # Set default response_format for Groq if not provided
+        if response_format is None:
+            response_format = "wav"
+
+        return stream_tts_groq(
+            text_chunks=text_chunks,
+            voice=voice,
+            model=model_name,
+            stream_mode=stream_mode,
+            response_format=response_format,
+            return_generator=return_generator,
+        )
+
     else:
         raise ValueError(
-            f"Unknown provider: {provider}. Supported providers are 'openai' and 'elevenlabs'. "
-            f"Use format 'provider/model_name' (e.g., 'openai/tts-1' or 'elevenlabs/eleven_multilingual_v2')."
+            f"Unknown provider: {provider}. Supported providers are 'openai', 'elevenlabs', and 'groq'. "
+            f"Use format 'provider/model_name' (e.g., 'openai/tts-1', 'elevenlabs/eleven_multilingual_v2', or 'groq/canopylabs/orpheus-v1-english')."
         )
 
 
@@ -1233,6 +1330,458 @@ def stream_tts_elevenlabs(
 
                     # Process and play audio for this chunk immediately
                     process_audio_buffer(buffer, sample_rate)
+            except httpx.HTTPStatusError as e:
+                # Re-raise ValueError if we already converted it
+                if isinstance(e, ValueError):
+                    raise
+                # Otherwise, provide a generic error message
+                raise ValueError(
+                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                    f"URL: {e.request.url}"
+                ) from e
+
+
+def stream_tts_groq(
+    text_chunks: Union[List[str], Iterable[str]],
+    voice: str,
+    model: str = "canopylabs/orpheus-v1-english",
+    stream_mode: bool = False,
+    response_format: str = "wav",
+    return_generator: bool = False,
+) -> Union[None, Generator[bytes, None, None]]:
+    """
+    Stream text-to-speech using Groq's fast TTS API, processing chunks and playing the resulting audio stream.
+
+    Args:
+        text_chunks (Union[List[str], Iterable[str]]): A list or iterable of text strings (already formatted/split)
+            to convert to speech. If stream_mode is True, chunks are processed as they arrive.
+        voice (str): The voice to use for TTS synthesis.
+            For English model (canopylabs/orpheus-v1-english): "austin", "hannah", "troy"
+            For Arabic model (canopylabs/orpheus-arabic-saudi): "salma", "omar"
+        model (str): The model to use for TTS.
+            Options: "canopylabs/orpheus-v1-english", "canopylabs/orpheus-arabic-saudi"
+            Default is "canopylabs/orpheus-v1-english".
+        stream_mode (bool): If True, process chunks as they arrive in real-time. If False, join all chunks
+            and process as a single request. Default is False.
+        response_format (str): Audio format to request from Groq. Options: "wav", "mp3", "opus", "aac", "flac".
+            Default is "wav". Note: When return_generator is False and format is not "wav",
+            audio will be streamed as bytes but may not play correctly.
+        return_generator (bool): If True, returns a generator that yields audio chunks as bytes (for FastAPI streaming).
+            If False, plays audio to system output. Default is False.
+
+    Returns:
+        Union[None, Generator[bytes, None, None]]:
+            - None if return_generator is False (plays audio)
+            - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
+
+    Details:
+        - This function uses the Groq TTS API's streaming capabilities via httpx.
+        - When stream_mode is False, all `text_chunks` are joined into a single string for synthesis.
+        - When stream_mode is True, each chunk is processed individually as it arrives.
+        - When return_generator is False, audio is streamed, buffered, and played using the `play_audio` helper.
+        - When return_generator is True, audio chunks are yielded as bytes for use with FastAPI StreamingResponse.
+        - Supports vocal directions in text (e.g., "[cheerful] Hello world").
+        - Useful for real-time output, agent system narration, or API streaming.
+
+    Example:
+        >>> # Play audio locally
+        >>> stream_tts_groq(["Hello world"], voice="austin")
+        >>>
+        >>> # With vocal directions
+        >>> stream_tts_groq(
+        ...     ["Welcome to Orpheus. [cheerful] This is an example."],
+        ...     voice="hannah",
+        ...     model="canopylabs/orpheus-v1-english"
+        ... )
+        >>>
+        >>> # Get generator for FastAPI
+        >>> from fastapi.responses import StreamingResponse
+        >>> generator = stream_tts_groq(
+        ...     ["Hello world"],
+        ...     voice="austin",
+        ...     return_generator=True
+        ... )
+        >>> return StreamingResponse(generator, media_type="audio/wav")
+    """
+    # Get API key from environment variable
+    api_key = os.getenv("GROQ_API_KEY")
+    if api_key is None or not api_key.strip():
+        raise ValueError(
+            "Groq API key not provided. Set GROQ_API_KEY environment variable.\n"
+            "You can get your API key from: https://console.groq.com/keys"
+        )
+
+    # Strip any whitespace from the API key
+    api_key = api_key.strip()
+
+    # Validate model
+    if model not in GROQ_TTS_MODELS:
+        raise ValueError(
+            f"Invalid model '{model}'. Supported models: {', '.join(GROQ_TTS_MODELS)}"
+        )
+
+    # Validate voice based on model
+    if model == "canopylabs/orpheus-v1-english":
+        if voice not in GROQ_ORPHEUS_ENGLISH_VOICES:
+            raise ValueError(
+                f"Invalid voice '{voice}' for English model. "
+                f"Supported voices: {', '.join(GROQ_ORPHEUS_ENGLISH_VOICES)}"
+            )
+    elif model == "canopylabs/orpheus-arabic-saudi":
+        if voice not in GROQ_ORPHEUS_ARABIC_VOICES:
+            raise ValueError(
+                f"Invalid voice '{voice}' for Arabic model. "
+                f"Supported voices: {', '.join(GROQ_ORPHEUS_ARABIC_VOICES)}"
+            )
+
+    # Groq TTS API endpoint
+    url = "https://api.groq.com/openai/v1/audio/speech"
+
+    # Headers
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    # If stream_mode is False, process all chunks at once (backward compatible)
+    if not stream_mode:
+        # Convert iterable to list if needed
+        if isinstance(text_chunks, (list, tuple)):
+            chunks_list = list(text_chunks)
+        else:
+            chunks_list = list(text_chunks)
+
+        # Join all text chunks into a single string
+        text = " ".join(chunks_list)
+
+        # Payload
+        payload = {
+            "model": model,
+            "voice": voice,
+            "input": text,
+            "response_format": response_format,
+        }
+
+        # If return_generator is True, yield chunks directly
+        if return_generator:
+            # Make streaming request to Groq TTS API
+            try:
+                with httpx.stream(
+                    "POST",
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0,
+                ) as response:
+                    # Check for authentication errors
+                    if response.status_code == 401:
+                        error_text = (
+                            "No additional error details available"
+                        )
+                        try:
+                            error_bytes = b""
+                            for chunk in response.iter_bytes():
+                                error_bytes += chunk
+                            if error_bytes:
+                                error_text = error_bytes.decode(
+                                    "utf-8", errors="ignore"
+                                )
+                        except Exception as e:
+                            error_text = f"Could not read error response: {str(e)}"
+
+                        raise ValueError(
+                            f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
+                            f"The API key may be invalid, expired, or not set correctly.\n"
+                            f"Error details: {error_text}\n"
+                            f"Get your API key from: https://console.groq.com/keys"
+                        )
+
+                    response.raise_for_status()
+
+                    # Stream audio chunks and yield them
+                    for audio_chunk in response.iter_bytes():
+                        if audio_chunk:
+                            yield audio_chunk
+            except httpx.HTTPStatusError as e:
+                # Re-raise ValueError if we already converted it
+                if isinstance(e, ValueError):
+                    raise
+                # Otherwise, provide a generic error message
+                raise ValueError(
+                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                    f"URL: {e.request.url}"
+                ) from e
+            return
+
+        # Buffer to accumulate audio data
+        buffer = bytearray()
+
+        # Make streaming request to Groq TTS API
+        try:
+            with httpx.stream(
+                "POST",
+                url,
+                headers=headers,
+                json=payload,
+                timeout=30.0,
+            ) as response:
+                # Check for authentication errors
+                if response.status_code == 401:
+                    error_text = (
+                        "No additional error details available"
+                    )
+                    try:
+                        error_bytes = b""
+                        for chunk in response.iter_bytes():
+                            error_bytes += chunk
+                        if error_bytes:
+                            error_text = error_bytes.decode(
+                                "utf-8", errors="ignore"
+                            )
+                    except Exception as e:
+                        error_text = (
+                            f"Could not read error response: {str(e)}"
+                        )
+
+                    raise ValueError(
+                        f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
+                        f"The API key may be invalid, expired, or not set correctly.\n"
+                        f"Error details: {error_text}\n"
+                        f"Get your API key from: https://console.groq.com/keys"
+                    )
+
+                response.raise_for_status()
+
+                # Stream audio chunks
+                for audio_chunk in response.iter_bytes():
+                    if audio_chunk:
+                        buffer.extend(audio_chunk)
+
+                # Process and play audio (for WAV format)
+                if response_format == "wav" and len(buffer) > 0:
+                    try:
+                        import wave
+                        import io
+
+                        # Read WAV file from buffer
+                        wav_io = io.BytesIO(bytes(buffer))
+                        with wave.open(wav_io, "rb") as wav_file:
+                            # Get audio parameters
+                            frames = wav_file.getnframes()
+                            sample_rate = wav_file.getframerate()
+                            channels = wav_file.getnchannels()
+                            sample_width = wav_file.getsampwidth()
+
+                            # Read audio data
+                            audio_bytes = wav_file.readframes(frames)
+
+                            # Convert to numpy array
+                            if sample_width == 2:  # 16-bit
+                                audio = np.frombuffer(
+                                    audio_bytes, dtype=np.int16
+                                )
+                            elif sample_width == 4:  # 32-bit
+                                audio = np.frombuffer(
+                                    audio_bytes, dtype=np.int32
+                                )
+                            else:
+                                raise ValueError(
+                                    f"Unsupported sample width: {sample_width}"
+                                )
+
+                            # Handle stereo audio (convert to mono)
+                            if channels > 1:
+                                audio = audio.reshape(-1, channels)
+                                audio = audio[:, 0]  # Take first channel
+
+                            # Play audio
+                            if len(audio) > 0:
+                                audio_float = (
+                                    audio.astype(np.float32) / 32768.0
+                                )
+                                sd.play(audio_float, sample_rate)
+                                sd.wait()
+                    except ImportError:
+                        # Fallback: try to play raw WAV data
+                        # This is a simple approach that may not work for all WAV files
+                        print(
+                            "Warning: wave module not available. "
+                            "Install it for proper WAV playback."
+                        )
+                elif response_format != "wav":
+                    # For non-WAV formats, we can't play directly
+                    # User should use return_generator=True for these formats
+                    pass
+        except httpx.HTTPStatusError as e:
+            # Re-raise ValueError if we already converted it
+            if isinstance(e, ValueError):
+                raise
+            # Otherwise, provide a generic error message
+            raise ValueError(
+                f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                f"URL: {e.request.url}"
+            ) from e
+    else:
+        # Stream mode: process each chunk as it arrives
+        for chunk in text_chunks:
+            if not chunk or not chunk.strip():
+                continue
+
+            # Payload for this chunk
+            payload = {
+                "model": model,
+                "voice": voice,
+                "input": chunk.strip(),
+                "response_format": response_format,
+            }
+
+            # If return_generator is True, yield chunks directly
+            if return_generator:
+                # Make streaming request to Groq TTS API for this chunk
+                try:
+                    with httpx.stream(
+                        "POST",
+                        url,
+                        headers=headers,
+                        json=payload,
+                        timeout=30.0,
+                    ) as response:
+                        # Check for authentication errors
+                        if response.status_code == 401:
+                            error_text = "No additional error details available"
+                            try:
+                                error_bytes = b""
+                                for (
+                                    audio_chunk
+                                ) in response.iter_bytes():
+                                    error_bytes += audio_chunk
+                                if error_bytes:
+                                    error_text = error_bytes.decode(
+                                        "utf-8", errors="ignore"
+                                    )
+                            except Exception as e:
+                                error_text = f"Could not read error response: {str(e)}"
+
+                            raise ValueError(
+                                f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
+                                f"The API key may be invalid, expired, or not set correctly.\n"
+                                f"Error details: {error_text}\n"
+                                f"Get your API key from: https://console.groq.com/keys"
+                            )
+
+                        response.raise_for_status()
+
+                        # Stream audio chunks for this text chunk and yield them
+                        for audio_chunk in response.iter_bytes():
+                            if audio_chunk:
+                                yield audio_chunk
+                except httpx.HTTPStatusError as e:
+                    # Re-raise ValueError if we already converted it
+                    if isinstance(e, ValueError):
+                        raise
+                    # Otherwise, provide a generic error message
+                    raise ValueError(
+                        f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                        f"URL: {e.request.url}"
+                    ) from e
+                continue
+
+            # Buffer to accumulate audio data for this chunk
+            buffer = bytearray()
+
+            # Make streaming request to Groq TTS API for this chunk
+            try:
+                with httpx.stream(
+                    "POST",
+                    url,
+                    headers=headers,
+                    json=payload,
+                    timeout=30.0,
+                ) as response:
+                    # Check for authentication errors
+                    if response.status_code == 401:
+                        error_text = (
+                            "No additional error details available"
+                        )
+                        try:
+                            error_bytes = b""
+                            for audio_chunk in response.iter_bytes():
+                                error_bytes += audio_chunk
+                            if error_bytes:
+                                error_text = error_bytes.decode(
+                                    "utf-8", errors="ignore"
+                                )
+                        except Exception as e:
+                            error_text = f"Could not read error response: {str(e)}"
+
+                        raise ValueError(
+                            f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
+                            f"The API key may be invalid, expired, or not set correctly.\n"
+                            f"Error details: {error_text}\n"
+                            f"Get your API key from: https://console.groq.com/keys"
+                        )
+
+                    response.raise_for_status()
+
+                    # Stream audio chunks for this text chunk
+                    for audio_chunk in response.iter_bytes():
+                        if audio_chunk:
+                            buffer.extend(audio_chunk)
+
+                    # Process and play audio for this chunk immediately (for WAV format)
+                    if response_format == "wav" and len(buffer) > 0:
+                        try:
+                            import wave
+                            import io
+
+                            # Read WAV file from buffer
+                            wav_io = io.BytesIO(bytes(buffer))
+                            with wave.open(wav_io, "rb") as wav_file:
+                                # Get audio parameters
+                                frames = wav_file.getnframes()
+                                sample_rate = wav_file.getframerate()
+                                channels = wav_file.getnchannels()
+                                sample_width = wav_file.getsampwidth()
+
+                                # Read audio data
+                                audio_bytes = wav_file.readframes(frames)
+
+                                # Convert to numpy array
+                                if sample_width == 2:  # 16-bit
+                                    audio = np.frombuffer(
+                                        audio_bytes, dtype=np.int16
+                                    )
+                                elif sample_width == 4:  # 32-bit
+                                    audio = np.frombuffer(
+                                        audio_bytes, dtype=np.int32
+                                    )
+                                else:
+                                    raise ValueError(
+                                        f"Unsupported sample width: {sample_width}"
+                                    )
+
+                                # Handle stereo audio (convert to mono)
+                                if channels > 1:
+                                    audio = audio.reshape(-1, channels)
+                                    audio = audio[:, 0]  # Take first channel
+
+                                # Play audio
+                                if len(audio) > 0:
+                                    audio_float = (
+                                        audio.astype(np.float32) / 32768.0
+                                    )
+                                    sd.play(audio_float, sample_rate)
+                                    sd.wait()
+                        except ImportError:
+                            # Fallback: try to play raw WAV data
+                            print(
+                                "Warning: wave module not available. "
+                                "Install it for proper WAV playback."
+                            )
+                    elif response_format != "wav":
+                        # For non-WAV formats, we can't play directly
+                        # User should use return_generator=True for these formats
+                        pass
             except httpx.HTTPStatusError as e:
                 # Re-raise ValueError if we already converted it
                 if isinstance(e, ValueError):
@@ -2005,6 +2554,272 @@ def speech_to_text_elevenlabs(
             # Close the file handle
             if files and files.get("file"):
                 files["file"][1].close()
+
+
+def speech_to_text_groq(
+    audio_file_path: Optional[str] = None,
+    audio_data: Optional[np.ndarray] = None,
+    sample_rate: int = 16000,
+    model: str = "whisper-large-v3-turbo",
+    language: Optional[str] = None,
+    prompt: Optional[str] = None,
+    response_format: str = "text",
+    temperature: float = 0.0,
+    timestamp_granularities: Optional[List[Literal["word", "segment"]]] = None,
+    translate: bool = False,
+) -> str:
+    """
+    Convert speech to text using Groq's fast Whisper API.
+
+    This function can transcribe or translate audio from either a file path or raw audio data.
+    It supports both transcription (preserving original language) and translation (to English).
+
+    Args:
+        audio_file_path (Optional[str]): Path to an audio file to transcribe/translate.
+            Supported formats: mp3, mp4, mpeg, mpga, m4a, wav, webm, flac, ogg.
+            Max file size: 25 MB (free tier), 100MB (dev tier).
+            If provided, audio_data will be ignored.
+        audio_data (Optional[np.ndarray]): Raw audio data as numpy array.
+            Should be float32 in range [-1, 1] or int16.
+            If provided without audio_file_path, will be saved to a temporary file.
+        sample_rate (int): Sample rate of the audio data. Default is 16000.
+            Only used when audio_data is provided.
+        model (str): The model to use for transcription/translation.
+            Options: "whisper-large-v3-turbo" (fast, multilingual, no translation),
+                    "whisper-large-v3" (high accuracy, multilingual, supports translation).
+            Default is "whisper-large-v3-turbo".
+        language (Optional[str]): The language of the input audio in ISO-639-1 format.
+            If None, the model will attempt to detect the language automatically.
+            For translations, only 'en' is supported.
+        prompt (Optional[str]): An optional text to guide the model's style or continue
+            a previous audio segment. Limited to 224 tokens.
+        response_format (str): The format of the transcript output.
+            Options: "json", "text", "verbose_json". Default is "text".
+        temperature (float): The sampling temperature, between 0 and 1.
+            Higher values make the output more random. Default is 0.0.
+        timestamp_granularities (Optional[List[Literal["word", "segment"]]]): 
+            Timestamp granularities to populate. Only used when response_format="verbose_json".
+            Options: ["word"], ["segment"], or ["word", "segment"].
+            Default is None (uses "segment").
+        translate (bool): If True, translate audio to English instead of transcribing.
+            Only supported by "whisper-large-v3" model. Default is False.
+
+    Returns:
+        str: The transcribed or translated text from the audio.
+
+    Raises:
+        ValueError: If neither audio_file_path nor audio_data is provided,
+            or if GROQ_API_KEY is not set, or if translate=True with unsupported model.
+        IOError: If there's an error reading the audio file.
+        httpx.HTTPStatusError: If there's an HTTP error from the API.
+
+    Example:
+        >>> # Transcription from file
+        >>> text = speech_to_text_groq(audio_file_path="recording.wav")
+        >>>
+        >>> # Translation from file
+        >>> text = speech_to_text_groq(
+        ...     audio_file_path="recording.wav",
+        ...     model="whisper-large-v3",
+        ...     translate=True
+        ... )
+        >>>
+        >>> # From numpy array with timestamps
+        >>> import sounddevice as sd
+        >>> recording = sd.rec(int(3 * 16000), samplerate=16000, channels=1)
+        >>> sd.wait()
+        >>> text = speech_to_text_groq(
+        ...     audio_data=recording,
+        ...     sample_rate=16000,
+        ...     response_format="verbose_json",
+        ...     timestamp_granularities=["word", "segment"]
+        ... )
+    """
+    import os
+    import tempfile
+
+    # Get API key from environment variable
+    api_key = os.getenv("GROQ_API_KEY")
+    if api_key is None or not api_key.strip():
+        raise ValueError(
+            "Groq API key not provided. Set GROQ_API_KEY environment variable.\n"
+            "You can get your API key from: https://console.groq.com/keys"
+        )
+
+    # Strip any whitespace from the API key
+    api_key = api_key.strip()
+
+    # Validate model
+    if model not in GROQ_STT_MODELS:
+        raise ValueError(
+            f"Invalid model '{model}'. Supported models: {', '.join(GROQ_STT_MODELS)}"
+        )
+
+    # Validate translate parameter
+    if translate and model != "whisper-large-v3":
+        raise ValueError(
+            f"Translation is only supported with 'whisper-large-v3' model, not '{model}'."
+        )
+
+    # Choose endpoint based on translate flag
+    if translate:
+        url = "https://api.groq.com/openai/v1/audio/translations"
+    else:
+        url = "https://api.groq.com/openai/v1/audio/transcriptions"
+
+    # Headers
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    # Determine which audio source to use
+    use_temp_file = False
+    temp_file_path = None
+
+    if audio_file_path:
+        # Use the provided file path
+        if not os.path.exists(audio_file_path):
+            raise IOError(f"Audio file not found: {audio_file_path}")
+        file_path = audio_file_path
+    elif audio_data is not None:
+        # Save audio data to a temporary file
+        try:
+            import soundfile as sf
+
+            temp_file = tempfile.NamedTemporaryFile(
+                delete=False, suffix=".wav"
+            )
+            temp_file_path = temp_file.name
+            temp_file.close()
+
+            # Convert audio data to float32 if needed
+            if audio_data.dtype == np.int16:
+                audio_float = audio_data.astype(np.float32) / 32768.0
+            elif audio_data.dtype == np.float32:
+                audio_float = audio_data
+            else:
+                audio_float = audio_data.astype(np.float32)
+
+            # Ensure mono audio
+            if len(audio_float.shape) > 1:
+                audio_float = (
+                    audio_float[:, 0]
+                    if audio_float.shape[1] > 0
+                    else audio_float
+                )
+
+            # Save to temporary file
+            sf.write(temp_file_path, audio_float, sample_rate)
+            file_path = temp_file_path
+            use_temp_file = True
+        except ImportError:
+            raise ValueError(
+                "soundfile library is required for audio_data input. "
+                "Install it with: pip install soundfile"
+            )
+    else:
+        raise ValueError(
+            "Either audio_file_path or audio_data must be provided."
+        )
+
+    # Prepare form data
+    files = {
+        "file": (
+            os.path.basename(file_path),
+            open(file_path, "rb"),
+            "audio/wav",
+        )
+    }
+
+    data = {
+        "model": model,
+        "response_format": response_format,
+        "temperature": str(temperature),
+    }
+
+    if language:
+        data["language"] = language
+
+    if prompt:
+        data["prompt"] = prompt
+
+    # Add timestamp_granularities if provided and response_format is verbose_json
+    if timestamp_granularities and response_format == "verbose_json":
+        # Groq API (OpenAI-compatible) expects this as an array
+        # Send as JSON-encoded string, which is commonly accepted by OpenAI-compatible APIs
+        import json
+        data["timestamp_granularities"] = json.dumps(timestamp_granularities)
+
+    try:
+        # Make request to Groq API
+        with httpx.Client(timeout=300.0) as client:  # Longer timeout for large files
+            response = client.post(
+                url,
+                headers=headers,
+                files=files,
+                data=data,
+            )
+
+            # Check for authentication errors
+            if response.status_code == 401:
+                error_text = "No additional error details available"
+                try:
+                    if response.text:
+                        error_text = response.text
+                except Exception as e:
+                    error_text = (
+                        f"Could not read error response: {str(e)}"
+                    )
+
+                raise ValueError(
+                    f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
+                    f"The API key may be invalid, expired, or not set correctly.\n"
+                    f"Error details: {error_text}\n"
+                    f"Get your API key from: https://console.groq.com/keys"
+                )
+
+            response.raise_for_status()
+
+            # Parse response based on format
+            if response_format == "text":
+                return response.text.strip()
+            elif response_format == "json":
+                result = response.json()
+                return result.get("text", "")
+            elif response_format == "verbose_json":
+                result = response.json()
+                # Return the full JSON as a string, or extract text if available
+                if isinstance(result, dict) and "text" in result:
+                    return result.get("text", "")
+                else:
+                    # Return the full JSON string representation
+                    import json
+                    return json.dumps(result, indent=2, default=str)
+            else:
+                return response.text.strip()
+    except httpx.HTTPStatusError as e:
+        # Re-raise ValueError if we already converted it
+        if isinstance(e, ValueError):
+            raise
+        # Otherwise, provide a generic error message
+        raise ValueError(
+            f"HTTP error {e.response.status_code}: {e.response.text}\n"
+            f"URL: {e.request.url}"
+        ) from e
+    finally:
+        # Clean up temporary file if we created one
+        if (
+            use_temp_file
+            and temp_file_path
+            and os.path.exists(temp_file_path)
+        ):
+            try:
+                os.unlink(temp_file_path)
+            except Exception:
+                pass
+        # Close the file handle
+        if "files" in locals() and files.get("file"):
+            files["file"][1].close()
 
 
 def record_audio(

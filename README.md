@@ -89,6 +89,7 @@ Create a `.env` file or set environment variables:
 ```bash
 export OPENAI_API_KEY="your-openai-api-key"
 export ELEVENLABS_API_KEY="your-elevenlabs-api-key"  # Optional
+export GROQ_API_KEY="your-groq-api-key"              # Optional
 ```
 
 ### Basic Text-to-Speech

@@ -29,13 +29,18 @@ examples/
    - Different output formats and settings
    - Demonstrates `list_models()` and `list_voices()` functions
 
-3. **[`example_streaming_tts_callback.py`](text_to_speech/example_streaming_tts_callback.py)**
+3. **[`example_stream_tts_groq.py`](text_to_speech/example_stream_tts_groq.py)**
+   - Groq TTS API examples using Orpheus models
+   - Basic TTS and TTS with vocal directions (emotions)
+   - Long text chunking and Arabic language support
+
+4. **[`example_streaming_tts_callback.py`](text_to_speech/example_streaming_tts_callback.py)**
    - StreamingTTSCallback class usage
    - Real-time text-to-speech conversion
    - Integration with agent frameworks
 
-4. **[`example_voice_selection.py`](text_to_speech/example_voice_selection.py)**
-   - Available voices for both providers
+5. **[`example_voice_selection.py`](text_to_speech/example_voice_selection.py)**
+   - Available voices for all providers (OpenAI, ElevenLabs, Groq)
    - Voice selection helpers using `list_voices()` function
    - Use case recommendations
 
@@ -46,7 +51,12 @@ examples/
    - File-based and audio data transcription
    - Different models and response formats
 
-6. **[`example_speech_to_text_elevenlabs_file.py`](speech_to_text/example_speech_to_text_elevenlabs_file.py)**
+6. **[`example_speech_to_text_groq.py`](speech_to_text/example_speech_to_text_groq.py)**
+   - Groq fast Whisper transcription and translation
+   - Word-level timestamps and verbose JSON output
+   - Live recording transcription example
+
+7. **[`example_speech_to_text_elevenlabs_file.py`](speech_to_text/example_speech_to_text_elevenlabs_file.py)**
    - ElevenLabs Speech-to-Text from audio file
    - Non-real-time transcription
 
@@ -107,7 +117,8 @@ examples/
 2. Set environment variables:
    ```bash
    export OPENAI_API_KEY="your-openai-api-key"
-   export ELEVENLABS_API_KEY="your-elevenlabs-api-key"  # Optional, for ElevenLabs examples
+   export ELEVENLABS_API_KEY="your-elevenlabs-api-key"  # Optional
+   export GROQ_API_KEY="your-groq-api-key"              # Optional
    ```
 
 3. Install additional dependencies (if needed):
@@ -157,6 +168,13 @@ Required for:
 - `speech_to_text_elevenlabs()` - ElevenLabs Speech-to-Text
 
 Get your key from: https://elevenlabs.io/app/settings/api-keys
+
+### Groq API Key
+Required for:
+- `stream_tts_groq()` - Groq TTS
+- `speech_to_text_groq()` - Groq STT/Translation
+
+Get your key from: https://console.groq.com/keys
 
 ## Common Patterns
 
