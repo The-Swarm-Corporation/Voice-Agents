@@ -1,0 +1,113 @@
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+
+[tool.poetry]
+name = "voice-agents"
+version = "0.1.4"
+description = "A comprehensive Python library for building production-ready voice agents with multi-provider support. Features real-time streaming TTS/STT, OpenAI, ElevenLabs, and Groq integration, audio processing, and seamless conversational AI capabilities."
+license = "MIT"
+authors = ["Kye Gomez <kye@swarms.world>"]
+homepage = "https://github.com/The-Swarm-Corporation/Voice-Agents"
+documentation = "https://github.com/The-Swarm-Corporation/Voice-Agents"
+readme = "README.md"
+repository = "https://github.com/The-Swarm-Corporation/Voice-Agents"
+keywords = [
+    "voice agents",
+    "voice ai",
+    "text-to-speech",
+    "speech-to-text",
+    "tts",
+    "stt",
+    "voice assistants",
+    "conversational ai",
+    "voice interfaces",
+    "audio processing",
+    "real-time streaming",
+    "streaming audio",
+    "openai",
+    "openai tts",
+    "openai api",
+    "groq",
+    "groq voice",
+    "elevenlabs",
+    "elevenlabs api",
+    "voice synthesis",
+    "speech synthesis",
+    "voice recognition",
+    "speech recognition",
+    "audio streaming",
+    "streaming tts",
+    "streaming stt",
+    "ai agents",
+    "artificial intelligence",
+    "llms",
+    "large language models",
+    "voice applications",
+    "voice bots",
+    "audio generation",
+    "multimodal ai",
+    "voice interaction",
+    "audio ai",
+    "production voice agents",
+    "enterprise voice agents",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.10",
+]
+
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+setuptools = "*"
+httpx = "*"
+numpy = "*"
+sounddevice = "*"
+python-dotenv = "*"
+soundfile = "*"
+
+[tool.poetry.group.lint.dependencies]
+black = ">=23.1,<26.0"
+ruff = ">=0.5.1,<0.14.11"
+types-toml = "^0.10.8.1"
+types-pytz = ">=2023.3,<2026.0"
+types-chardet = "^5.0.4.6"
+mypy-protobuf = "^3.0.0"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = ">=8.1.1,<10.0.0"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+ruff = "*"
+pytest = "*"
+# pre-commit = "*"
+
+[tool.ruff]
+line-length = 70
+
+[tool.black]
+target-version = ["py38"]
+line-length = 70
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+  | docs
+)/
+'''
+
