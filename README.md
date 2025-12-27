@@ -20,9 +20,9 @@
 
 ## Overview
 
-**Voice-Agents** is a production-ready Python library for building enterprise-grade voice-enabled AI applications. Built by [Swarms Corporation](https://swarms.ai), it provides seamless integration with multiple TTS/STT providers including OpenAI, ElevenLabs, and Groq, with real-time streaming capabilities optimized for agent-based architectures.
+**Voice-Agents** is a production-ready Python library for building enterprise-grade voice-enabled agentic applications. Built by [Swarms Corporation](https://swarms.ai), it provides seamless integration with multiple TTS/STT providers including OpenAI, ElevenLabs, and Groq, with real-time streaming capabilities optimized for agent-based architectures.
 
-Whether you're building conversational AI assistants, voice-enabled agents, or real-time audio processing systems, Voice-Agents provides the infrastructure you need to go from prototype to production.
+Voice-Agents delivers the infrastructure required to build conversational agentic assistants, voice-enabled agents, and real-time audio processing systems, enabling rapid deployment from prototype to production.
 
 ### Built by Swarms Corporation
 

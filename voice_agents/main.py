@@ -212,7 +212,7 @@ def play_audio(audio_data: np.ndarray) -> None:
         sd.wait()
 
 
-def stream_tts(
+def stream_tts_openai(
     text_chunks: Union[List[str], Iterable[str]],
     voice: VoiceType = "alloy",
     model: str = "tts-1",
@@ -522,6 +522,144 @@ def stream_tts(
                     f"HTTP error {e.response.status_code}: {e.response.text}\n"
                     f"URL: {e.request.url}"
                 ) from e
+
+
+def stream_tts(
+    text_chunks: Union[List[str], Iterable[str]],
+    model: str = "tts-1",
+    voice: Optional[str] = None,
+    stream_mode: bool = False,
+    return_generator: bool = False,
+    # OpenAI-specific parameters
+    response_format: Optional[str] = None,
+    # ElevenLabs-specific parameters
+    voice_id: Optional[str] = None,
+    stability: float = 0.5,
+    similarity_boost: float = 0.75,
+    output_format: Optional[str] = None,
+    optimize_streaming_latency: Optional[int] = None,
+    enable_logging: bool = True,
+) -> Union[None, Generator[bytes, None, None]]:
+    """
+    Unified text-to-speech streaming function that supports both OpenAI and ElevenLabs providers.
+    
+    This function automatically detects the provider based on the model name and routes to the
+    appropriate backend, similar to how LiteLLM works.
+    
+    Args:
+        text_chunks (Union[List[str], Iterable[str]]): A list or iterable of text strings to convert to speech.
+        model (str): The model name to use. Determines the provider:
+            - OpenAI models: "tts-1", "tts-1-hd" (default: "tts-1")
+            - ElevenLabs models: "eleven_multilingual_v2", "eleven_turbo_v2", etc.
+        voice (Optional[str]): Voice identifier. For OpenAI, use voice names like "alloy", "nova", etc.
+            For ElevenLabs, use friendly names like "rachel", "domi", etc. or voice IDs.
+            If not provided, defaults to "alloy" for OpenAI or requires voice_id for ElevenLabs.
+        stream_mode (bool): If True, process chunks as they arrive in real-time. Default is False.
+        return_generator (bool): If True, returns a generator that yields audio chunks as bytes.
+            If False, plays audio to system output. Default is False.
+        response_format (Optional[str]): OpenAI-specific audio format. Options: "pcm", "mp3", "opus", "aac", "flac".
+            Default is "pcm" for OpenAI. Ignored for ElevenLabs.
+        voice_id (Optional[str]): ElevenLabs-specific voice ID. If provided, overrides voice parameter for ElevenLabs.
+            Ignored for OpenAI.
+        stability (float): ElevenLabs-specific stability setting (0.0 to 1.0). Default is 0.5. Ignored for OpenAI.
+        similarity_boost (float): ElevenLabs-specific similarity boost (0.0 to 1.0). Default is 0.75. Ignored for OpenAI.
+        output_format (Optional[str]): ElevenLabs-specific output format. Options include "pcm_44100", "mp3_44100_128", etc.
+            Default is "pcm_44100" for ElevenLabs. Ignored for OpenAI.
+        optimize_streaming_latency (Optional[int]): ElevenLabs-specific latency optimization (0-4). Ignored for OpenAI.
+        enable_logging (bool): ElevenLabs-specific logging setting. Default is True. Ignored for OpenAI.
+    
+    Returns:
+        Union[None, Generator[bytes, None, None]]: 
+            - None if return_generator is False (plays audio)
+            - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
+    
+    Example:
+        >>> # Using OpenAI
+        >>> stream_tts(["Hello world"], model="tts-1", voice="alloy")
+        >>> 
+        >>> # Using ElevenLabs
+        >>> stream_tts(["Hello world"], model="eleven_multilingual_v2", voice="rachel")
+        >>> 
+        >>> # Get generator for FastAPI
+        >>> generator = stream_tts(
+        ...     ["Hello world"], 
+        ...     model="tts-1", 
+        ...     voice="alloy", 
+        ...     return_generator=True
+        ... )
+    """
+    # Detect provider from model name
+    model_lower = model.lower()
+    
+    # Check if it's an OpenAI model
+    if model_lower.startswith("tts-1"):
+        # Use OpenAI
+        if voice is None:
+            voice = "alloy"  # Default OpenAI voice
+        
+        # Set default response_format for OpenAI if not provided
+        if response_format is None:
+            response_format = "pcm"
+        
+        return stream_tts_openai(
+            text_chunks=text_chunks,
+            voice=voice,  # type: ignore
+            model=model,
+            stream_mode=stream_mode,
+            response_format=response_format,
+            return_generator=return_generator,
+        )
+    
+    # Check if it's an ElevenLabs model
+    elif model_lower.startswith("eleven_"):
+        # Use ElevenLabs
+        # Determine voice_id: use voice_id parameter if provided, otherwise use voice parameter
+        if voice_id is None:
+            if voice is None:
+                raise ValueError(
+                    "Either 'voice' or 'voice_id' must be provided for ElevenLabs models. "
+                    "Use a friendly name like 'rachel' or a voice ID."
+                )
+            voice_id = voice
+        else:
+            # voice_id was explicitly provided, use it
+            pass
+        
+        # Set default output_format for ElevenLabs if not provided
+        if output_format is None:
+            output_format = "pcm_44100"
+        
+        return stream_tts_elevenlabs(
+            text_chunks=text_chunks,
+            voice_id=voice_id,
+            model_id=model,
+            stability=stability,
+            similarity_boost=similarity_boost,
+            output_format=output_format,
+            optimize_streaming_latency=optimize_streaming_latency,
+            enable_logging=enable_logging,
+            stream_mode=stream_mode,
+            return_generator=return_generator,
+        )
+    
+    else:
+        # Unknown model, try to infer provider
+        # Default to OpenAI for backward compatibility
+        if voice is None:
+            voice = "alloy"
+        
+        if response_format is None:
+            response_format = "pcm"
+        
+        # Try OpenAI first (backward compatibility)
+        return stream_tts_openai(
+            text_chunks=text_chunks,
+            voice=voice,  # type: ignore
+            model=model,
+            stream_mode=stream_mode,
+            response_format=response_format,
+            return_generator=return_generator,
+        )
 
 
 def stream_tts_elevenlabs(
