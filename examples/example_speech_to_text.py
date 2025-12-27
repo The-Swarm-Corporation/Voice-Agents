@@ -5,7 +5,6 @@ Demonstrates how to use OpenAI's Whisper API to convert speech to text.
 Shows both file-based and audio data transcription.
 """
 
-
 # Example 1: Transcribe from audio file
 print("Example 1: Transcribe from audio file")
 print(
