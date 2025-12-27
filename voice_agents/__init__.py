@@ -18,6 +18,7 @@ from voice_agents.main import (
     list_voices,
     get_media_type_for_format,
     speech_to_text,
+    speech_to_text_elevenlabs,
     record_audio,
     # Classes
     StreamingTTSCallback,
@@ -43,6 +44,7 @@ __all__ = [
     "list_voices",
     "get_media_type_for_format",
     "speech_to_text",
+    "speech_to_text_elevenlabs",
     "record_audio",
     # Classes
     "StreamingTTSCallback",
