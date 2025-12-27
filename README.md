@@ -1,14 +1,37 @@
-# Voice-Agents
+<div align="center">
 
-**Enterprise-Grade Voice Agent Infrastructure for Production-Ready AI Applications**
+# 🗣️ Voice-Agents
 
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Python](https://img.shields.io/badge/Python-3.10%2B-blue.svg)](https://www.python.org/)
-[![Made by Swarms](https://img.shields.io/badge/Made%20by-Swarms%20Corporation-black)](https://swarms.ai)
+**Enterprise-Grade Voice Agent Infrastructure**  
+*For Production-Ready AI Applications*
+
+<br>
+
+<a href="LICENSE">
+  <img alt="License: MIT" src="https://img.shields.io/badge/License-MIT-blue.svg">
+</a>
+<a href="https://www.python.org/">
+  <img alt="Python 3.10+" src="https://img.shields.io/badge/Python-3.10%2B-blue.svg">
+</a>
+<a href="https://swarms.ai">
+  <img alt="Made by Swarms" src="https://img.shields.io/badge/Made%20by-Swarms%20Corporation-black">
+</a>
+
+<br><br>
 
 *Multi-provider voice synthesis and recognition with real-time streaming capabilities*
 
-[Features](#features) • [Installation](#installation) • [Quick Start](#quick-start) • [Documentation](#documentation) • [Examples](#swarms-integration)
+<br>
+
+<p>
+  <a href="#features">Features</a> •
+  <a href="#installation">Installation</a> •
+  <a href="#quick-start">Quick Start</a> •
+  <a href="#documentation">Documentation</a> •
+  <a href="#swarms-integration">Examples</a>
+</p>
+
+</div>
 
 ---
 
@@ -281,42 +304,6 @@ out = agent.run(
 tts_callback.flush()
 
 print(out)
-```
-
-### Voice-Enabled Multi-Agent System
-
-```python
-from swarms import Agent, Swarm
-from voice_agents import StreamingTTSCallback
-
-# Create multiple voice-enabled agents
-research_agent = Agent(
-    agent_name="Research-Agent",
-    model_name="gpt-4",
-    streaming_on=True,
-)
-
-analysis_agent = Agent(
-    agent_name="Analysis-Agent",
-    model_name="gpt-4",
-    streaming_on=True,
-)
-
-# Create voice callbacks for each agent
-research_tts = StreamingTTSCallback(voice="nova", model="tts-1")
-analysis_tts = StreamingTTSCallback(voice="alloy", model="tts-1")
-
-# Create swarm
-swarm = Swarm(
-    agents=[research_agent, analysis_agent],
-    # ... other swarm configuration
-)
-
-# Run with voice callbacks
-results = swarm.run(
-    task="Analyze market trends",
-    callbacks=[research_tts, analysis_tts]
-)
 ```
 
 ---
