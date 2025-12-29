@@ -1,10 +1,12 @@
+import os
 import re
-from typing import Generator, Iterable, List, Optional, Union
+from typing import Iterable, List, Optional, Union
 
 import httpx
 import numpy as np
 import sounddevice as sd
 from dotenv import load_dotenv
+from loguru import logger
 
 from voice_agents.models_and_voices import (
     ELEVENLABS_TTS_MODELS,
@@ -25,6 +27,17 @@ from voice_agents.utils import (
 
 load_dotenv()
 
+# Configure loguru logger - enable verbose logging if env var is set
+_verbose_logging_enabled = os.getenv("VOICE_AGENTS_VERBOSE_LOGGING", "false").lower() in (
+    "true",
+    "True",
+    "1",
+    "yes",
+)
+
+if not _verbose_logging_enabled:
+    logger.remove()  # Remove default handler
+    logger.add(lambda msg: None, level="DEBUG")  # Silent logger by default
 
 
 def stream_tts_openai(
@@ -33,8 +46,8 @@ def stream_tts_openai(
     model: str = "tts-1",
     stream_mode: bool = False,
     response_format: str = "pcm",
-    return_generator: bool = False,
-) -> Union[None, Generator[bytes, None, None]]:
+    verbose: Optional[bool] = None,
+) -> None:
     """
     Stream text-to-speech using OpenAI TTS API, processing chunks and playing the resulting audio stream.
 
@@ -46,52 +59,77 @@ def stream_tts_openai(
         stream_mode (bool): If True, process chunks as they arrive in real-time. If False, join all chunks
             and process as a single request. Default is False.
         response_format (str): Audio format to request from OpenAI. Options: "pcm", "mp3", "opus", "aac", "flac".
-            Default is "pcm" (16-bit PCM at 24kHz). Note: When return_generator is False and format is not "pcm",
-            audio will be streamed as bytes but may not play correctly.
-        return_generator (bool): If True, returns a generator that yields audio chunks as bytes (for FastAPI streaming).
-            If False, plays audio to system output. Default is False.
+            Default is "pcm" (16-bit PCM at 24kHz).
+        verbose (Optional[bool]): Enable verbose logging. If None, uses VOICE_AGENTS_VERBOSE_LOGGING env var.
 
     Returns:
-        Union[None, Generator[bytes, None, None]]:
-            - None if return_generator is False (plays audio)
-            - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
+        None: Plays audio to system output.
 
     Details:
         - This function uses the OpenAI TTS API's streaming capabilities via httpx.
         - When stream_mode is False, all `text_chunks` are joined into a single string for synthesis.
         - When stream_mode is True, each chunk is processed individually as it arrives.
-        - When return_generator is False, audio is streamed, buffered, and played using the `play_audio` helper.
-        - When return_generator is True, audio chunks are yielded as bytes for use with FastAPI StreamingResponse.
+        - Audio is streamed, buffered, and played using the `play_audio` helper.
         - Handles incomplete PCM audio samples by only processing complete 16-bit samples.
         - Useful for real-time output, agent system narration, or API streaming.
 
     Example:
         >>> # Play audio locally
-        >>> stream_tts(["Hello world"], voice="alloy")
+        >>> stream_tts_openai(["Hello world"], voice="alloy")
         >>>
-        >>> # Get generator for FastAPI
-        >>> from fastapi.responses import StreamingResponse
-        >>> generator = stream_tts(["Hello world"], voice="alloy", return_generator=True)
-        >>> return StreamingResponse(generator, media_type="audio/pcm")
+        >>> # With verbose logging
+        >>> stream_tts_openai(["Hello world"], voice="alloy", verbose=True)
     """
+    # Determine if verbose logging is enabled
+    verbose_logging = (
+        verbose if verbose is not None else _verbose_logging_enabled
+    )
+
+    if verbose_logging:
+        logger.info("=" * 80)
+        logger.info("🎙️  Starting OpenAI TTS Request")
+        logger.info(
+            f"   Model: {model} | Voice: {voice} | Format: {response_format} | Stream Mode: {stream_mode}"
+        )
+        if isinstance(text_chunks, (list, tuple)):
+            logger.debug(
+                f"   Text chunks: {len(text_chunks)} chunks, "
+                f"Total length: {sum(len(str(c)) for c in text_chunks)} characters"
+            )
+            for i, chunk in enumerate(text_chunks[:3]):  # Log first 3 chunks
+                logger.debug(f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}")
+            if len(text_chunks) > 3:
+                logger.debug(f"   ... and {len(text_chunks) - 3} more chunks")
+        else:
+            logger.debug("   Text chunks: iterable (unknown size)")
+
     # Get API key from environment variable
     api_key = get_api_key(
         "OPENAI_API_KEY",
         "https://platform.openai.com/api-keys",
     )
 
+    if verbose_logging:
+        logger.debug("✅ API key retrieved successfully")
+
     # Check if model has provider prefix (common mistake)
     if "/" in model:
-        raise ValueError(
+        error_msg = (
             f"stream_tts_openai expects model name without provider prefix.\n"
             f"You provided: '{model}'\n"
             f"Expected: 'tts-1' or 'tts-1-hd'\n"
             f"To use provider/model format, use the unified stream_tts() function instead:\n"
             f"  stream_tts(text_chunks, model='{model}', voice='{voice}')"
         )
+        if verbose_logging:
+            logger.error(f"❌ Model validation failed: {error_msg}")
+        raise ValueError(error_msg)
 
     # OpenAI TTS API endpoint
     url = "https://api.openai.com/v1/audio/speech"
+
+    if verbose_logging:
+        logger.debug(f"🌐 API Endpoint: {url}")
 
     # Headers
     headers = {
@@ -99,8 +137,14 @@ def stream_tts_openai(
         "Content-Type": "application/json",
     }
 
+    if verbose_logging:
+        logger.debug(f"📋 Request headers prepared (Authorization: Bearer {api_key[:20]}...)")
+
     # If stream_mode is False, process all chunks at once (backward compatible)
     if not stream_mode:
+        if verbose_logging:
+            logger.info("📦 Processing all chunks at once (non-streaming mode)")
+
         # Convert iterable to list if needed
         if isinstance(text_chunks, (list, tuple)):
             chunks_list = list(text_chunks)
@@ -110,6 +154,10 @@ def stream_tts_openai(
         # Join all text chunks into a single string
         text = " ".join(chunks_list)
 
+        if verbose_logging:
+            logger.debug(f"📝 Combined text: {len(text)} characters")
+            logger.debug(f"   Preview: {text[:150]}{'...' if len(text) > 150 else ''}")
+
         # Payload
         payload = {
             "model": model,
@@ -118,62 +166,17 @@ def stream_tts_openai(
             "response_format": response_format,
         }
 
-        # If return_generator is True, yield chunks directly
-        if return_generator:
-            # Make streaming request to OpenAI TTS API
-            try:
-                with httpx.stream(
-                    "POST",
-                    url,
-                    headers=headers,
-                    json=payload,
-                    timeout=30.0,
-                ) as response:
-                    # Check for authentication errors
-                    if response.status_code == 401:
-                        error_text = (
-                            "No additional error details available"
-                        )
-                        try:
-                            error_bytes = b""
-                            for chunk in response.iter_bytes():
-                                error_bytes += chunk
-                            if error_bytes:
-                                error_text = error_bytes.decode(
-                                    "utf-8", errors="ignore"
-                                )
-                        except Exception as e:
-                            error_text = f"Could not read error response: {str(e)}"
-
-                        raise ValueError(
-                            f"Authentication failed (401). Please check your OPENAI_API_KEY.\n"
-                            f"The API key may be invalid, expired, or not set correctly.\n"
-                            f"Error details: {error_text}\n"
-                            f"Get your API key from: https://platform.openai.com/api-keys"
-                        )
-
-                    response.raise_for_status()
-
-                    # Stream audio chunks and yield them
-                    for audio_chunk in response.iter_bytes():
-                        if audio_chunk:
-                            yield audio_chunk
-            except httpx.HTTPStatusError as e:
-                # Re-raise ValueError if we already converted it
-                if isinstance(e, ValueError):
-                    raise
-                # Otherwise, provide a generic error message
-                raise ValueError(
-                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
-                    f"URL: {e.request.url}"
-                ) from e
-            return
+        if verbose_logging:
+            logger.debug(f"📤 Request payload: {list(payload.keys())} (input length: {len(text)} chars)")
 
         # Buffer to handle incomplete chunks (int16 = 2 bytes per sample)
         buffer = bytearray()
 
         # Make streaming request to OpenAI TTS API
         try:
+            if verbose_logging:
+                logger.info("🚀 Sending HTTP POST request to OpenAI TTS API...")
+
             with httpx.stream(
                 "POST",
                 url,
@@ -181,6 +184,10 @@ def stream_tts_openai(
                 json=payload,
                 timeout=30.0,
             ) as response:
+                if verbose_logging:
+                    logger.debug(f"📡 Response received: Status {response.status_code}")
+                    logger.debug(f"   Response headers: {dict(response.headers)}")
+
                 # Check for authentication errors
                 if response.status_code == 401:
                     error_text = (
@@ -199,22 +206,56 @@ def stream_tts_openai(
                             f"Could not read error response: {str(e)}"
                         )
 
-                    raise ValueError(
+                    error_msg = (
                         f"Authentication failed (401). Please check your OPENAI_API_KEY.\n"
                         f"The API key may be invalid, expired, or not set correctly.\n"
                         f"Error details: {error_text}\n"
                         f"Get your API key from: https://platform.openai.com/api-keys"
                     )
+                    if verbose_logging:
+                        logger.error(f"❌ {error_msg}")
+                    raise ValueError(error_msg)
 
                 response.raise_for_status()
 
+                if verbose_logging:
+                    logger.info("✅ Response successful, streaming audio chunks...")
+
                 # Stream audio chunks
+                chunk_count = 0
                 for audio_chunk in response.iter_bytes():
                     if audio_chunk:
                         buffer.extend(audio_chunk)
+                        chunk_count += 1
+                        if verbose_logging and chunk_count % 20 == 0:
+                            logger.debug(
+                                f"   📥 Received {chunk_count} chunks, "
+                                f"buffer: {len(buffer)} bytes ({len(buffer) / 1024:.2f} KB)"
+                            )
+
+                if verbose_logging:
+                    logger.info(
+                        f"📊 Audio streaming complete: {chunk_count} chunks, "
+                        f"total: {len(buffer)} bytes ({len(buffer) / 1024:.2f} KB)"
+                    )
+
+                # Check if we received any audio data
+                if len(buffer) == 0:
+                    error_msg = (
+                        "No audio data received from OpenAI TTS API. "
+                        "This might indicate an API error or network issue."
+                    )
+                    if verbose_logging:
+                        logger.error(f"❌ {error_msg}")
+                    raise ValueError(error_msg)
 
                 # Process all buffered data at once
+                if verbose_logging:
+                    logger.info(f"🎵 Processing audio buffer: {len(buffer)} bytes")
                 process_and_play_audio_buffer(buffer, response_format)
+                if verbose_logging:
+                    logger.info("✅ Audio playback completed successfully")
+                    logger.info("=" * 80)
         except httpx.HTTPStatusError as e:
             # Re-raise ValueError if we already converted it
             if isinstance(e, ValueError):
@@ -226,9 +267,19 @@ def stream_tts_openai(
             ) from e
     else:
         # Stream mode: process each chunk as it arrives
+        if verbose_logging:
+            logger.info("🔄 Processing chunks in stream mode (real-time)")
+        
+        chunk_index = 0
         for chunk in text_chunks:
+            chunk_index += 1
             if not chunk or not chunk.strip():
+                if verbose_logging:
+                    logger.debug(f"   ⏭️  Skipping empty chunk {chunk_index}")
                 continue
+            if verbose_logging:
+                logger.info(f"📦 Processing chunk {chunk_index}: {len(chunk.strip())} characters")
+                logger.debug(f"   Preview: {chunk.strip()[:100]}{'...' if len(chunk.strip()) > 100 else ''}")
 
             # Payload for this chunk
             payload = {
@@ -238,62 +289,14 @@ def stream_tts_openai(
                 "response_format": response_format,
             }
 
-            # If return_generator is True, yield chunks directly
-            if return_generator:
-                # Make streaming request to OpenAI TTS API for this chunk
-                try:
-                    with httpx.stream(
-                        "POST",
-                        url,
-                        headers=headers,
-                        json=payload,
-                        timeout=30.0,
-                    ) as response:
-                        # Check for authentication errors
-                        if response.status_code == 401:
-                            error_text = "No additional error details available"
-                            try:
-                                error_bytes = b""
-                                for (
-                                    audio_chunk
-                                ) in response.iter_bytes():
-                                    error_bytes += audio_chunk
-                                if error_bytes:
-                                    error_text = error_bytes.decode(
-                                        "utf-8", errors="ignore"
-                                    )
-                            except Exception as e:
-                                error_text = f"Could not read error response: {str(e)}"
-
-                            raise ValueError(
-                                f"Authentication failed (401). Please check your OPENAI_API_KEY.\n"
-                                f"The API key may be invalid, expired, or not set correctly.\n"
-                                f"Error details: {error_text}\n"
-                                f"Get your API key from: https://platform.openai.com/api-keys"
-                            )
-
-                        response.raise_for_status()
-
-                        # Stream audio chunks for this text chunk and yield them
-                        for audio_chunk in response.iter_bytes():
-                            if audio_chunk:
-                                yield audio_chunk
-                except httpx.HTTPStatusError as e:
-                    # Re-raise ValueError if we already converted it
-                    if isinstance(e, ValueError):
-                        raise
-                    # Otherwise, provide a generic error message
-                    raise ValueError(
-                        f"HTTP error {e.response.status_code}: {e.response.text}\n"
-                        f"URL: {e.request.url}"
-                    ) from e
-                continue
-
             # Buffer to handle incomplete chunks (int16 = 2 bytes per sample)
             buffer = bytearray()
 
             # Make streaming request to OpenAI TTS API for this chunk
             try:
+                if verbose_logging:
+                    logger.debug(f"🚀 Sending request for chunk {chunk_index}...")
+
                 with httpx.stream(
                     "POST",
                     url,
@@ -301,6 +304,8 @@ def stream_tts_openai(
                     json=payload,
                     timeout=30.0,
                 ) as response:
+                    if verbose_logging:
+                        logger.debug(f"📡 Chunk {chunk_index} response: Status {response.status_code}")
                     # Check for authentication errors
                     if response.status_code == 401:
                         error_text = (
@@ -326,24 +331,59 @@ def stream_tts_openai(
 
                     response.raise_for_status()
 
+                    if verbose_logging:
+                        logger.debug(f"✅ Chunk {chunk_index} response successful, streaming audio...")
+
                     # Stream audio chunks for this text chunk
+                    audio_chunk_count = 0
                     for audio_chunk in response.iter_bytes():
                         if audio_chunk:
                             buffer.extend(audio_chunk)
+                            audio_chunk_count += 1
+
+                    if verbose_logging:
+                        logger.debug(
+                            f"📥 Chunk {chunk_index}: Received {audio_chunk_count} audio chunks, "
+                            f"buffer: {len(buffer)} bytes"
+                        )
 
                     # Process and play audio for this chunk immediately
-                    process_and_play_audio_buffer(
-                        buffer, response_format, warn_on_empty=True
-                    )
+                    if len(buffer) > 0:
+                        if verbose_logging:
+                            logger.info(f"🎵 Playing audio for chunk {chunk_index}...")
+                        process_and_play_audio_buffer(
+                            buffer, response_format, warn_on_empty=True
+                        )
+                        if verbose_logging:
+                            logger.debug(f"✅ Chunk {chunk_index} playback completed")
+                    else:
+                        warning_msg = f"No audio data received for chunk: '{chunk[:50]}...'"
+                        if verbose_logging:
+                            logger.warning(f"⚠️  {warning_msg}")
+                        else:
+                            print(f"Warning: {warning_msg}")
             except httpx.HTTPStatusError as e:
                 # Re-raise ValueError if we already converted it
                 if isinstance(e, ValueError):
                     raise
                 # Otherwise, provide a generic error message
-                raise ValueError(
+                error_msg = (
                     f"HTTP error {e.response.status_code}: {e.response.text}\n"
                     f"URL: {e.request.url}"
-                ) from e
+                )
+                if verbose_logging:
+                    logger.error(f"❌ HTTP Error for chunk {chunk_index}: {error_msg}")
+                raise ValueError(error_msg) from e
+            except Exception as e:
+                if verbose_logging:
+                    logger.error(f"❌ Error processing chunk {chunk_index}: {type(e).__name__}: {e}")
+                    import traceback
+                    logger.debug(traceback.format_exc())
+                raise
+
+        if verbose_logging:
+            logger.info(f"✅ All {chunk_index} chunks processed successfully")
+            logger.info("=" * 80)
 
 
 def list_models() -> List[dict[str, str]]:
@@ -519,7 +559,6 @@ def stream_tts(
     model: str = "openai/tts-1",
     voice: Optional[str] = None,
     stream_mode: bool = False,
-    return_generator: bool = False,
     # OpenAI-specific parameters
     response_format: Optional[str] = None,
     # ElevenLabs-specific parameters
@@ -529,9 +568,10 @@ def stream_tts(
     output_format: Optional[str] = None,
     optimize_streaming_latency: Optional[int] = None,
     enable_logging: bool = True,
-) -> Union[None, Generator[bytes, None, None]]:
+    verbose: Optional[bool] = None,
+) -> None:
     """
-    Unified text-to-speech streaming function that supports both OpenAI and ElevenLabs providers.
+    Unified text-to-speech streaming function that supports OpenAI, ElevenLabs, and Groq providers.
 
     This function automatically detects the provider based on the model name and routes to the
     appropriate backend, similar to how LiteLLM works.
@@ -548,8 +588,6 @@ def stream_tts(
             For Groq English: "austin", "hannah", "troy". For Groq Arabic: "salma", "omar".
             If not provided, defaults to "alloy" for OpenAI or requires voice for Groq/ElevenLabs.
         stream_mode (bool): If True, process chunks as they arrive in real-time. Default is False.
-        return_generator (bool): If True, returns a generator that yields audio chunks as bytes.
-            If False, plays audio to system output. Default is False.
         response_format (Optional[str]): OpenAI-specific audio format. Options: "pcm", "mp3", "opus", "aac", "flac".
             Default is "pcm" for OpenAI. Ignored for ElevenLabs.
         voice_id (Optional[str]): ElevenLabs-specific voice ID. If provided, overrides voice parameter for ElevenLabs.
@@ -560,11 +598,10 @@ def stream_tts(
             Default is "pcm_44100" for ElevenLabs. Ignored for OpenAI.
         optimize_streaming_latency (Optional[int]): ElevenLabs-specific latency optimization (0-4). Ignored for OpenAI.
         enable_logging (bool): ElevenLabs-specific logging setting. Default is True. Ignored for ElevenLabs.
+        verbose (Optional[bool]): Enable verbose logging. If None, uses VOICE_AGENTS_VERBOSE_LOGGING env var.
 
     Returns:
-        Union[None, Generator[bytes, None, None]]:
-            - None if return_generator is False (plays audio)
-            - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
+        None: Plays audio to system output.
 
     Example:
         >>> # Using OpenAI with new format
@@ -579,14 +616,19 @@ def stream_tts(
         >>> # Backward compatible (old format still works)
         >>> stream_tts(["Hello world"], model="tts-1", voice="alloy")
         >>>
-        >>> # Get generator for FastAPI
-        >>> generator = stream_tts(
-        ...     ["Hello world"],
-        ...     model="openai/tts-1",
-        ...     voice="alloy",
-        ...     return_generator=True
-        ... )
+        >>> # With verbose logging
+        >>> stream_tts(["Hello world"], model="openai/tts-1", voice="alloy", verbose=True)
     """
+    # Determine if verbose logging is enabled
+    verbose_logging = (
+        verbose if verbose is not None else _verbose_logging_enabled
+    )
+
+    if verbose_logging:
+        logger.info("=" * 80)
+        logger.info("🎙️  Starting Unified TTS Request")
+        logger.info(f"   Model: {model} | Voice: {voice} | Stream Mode: {stream_mode}")
+
     # Parse model name to extract provider and model
     provider = None
     model_name = model
@@ -619,13 +661,20 @@ def stream_tts(
 
     # Route to appropriate provider
     if provider == "openai":
+        if verbose_logging:
+            logger.info(f"🔀 Routing to OpenAI provider (model: {model_name})")
+        
         # Use OpenAI
         if voice is None:
             voice = "alloy"  # Default OpenAI voice
+            if verbose_logging:
+                logger.debug(f"   Using default voice: {voice}")
 
         # Set default response_format for OpenAI if not provided
         if response_format is None:
             response_format = "pcm"
+            if verbose_logging:
+                logger.debug(f"   Using default response_format: {response_format}")
 
         return stream_tts_openai(
             text_chunks=text_chunks,
@@ -633,26 +682,37 @@ def stream_tts(
             model=model_name,
             stream_mode=stream_mode,
             response_format=response_format,
-            return_generator=return_generator,
+            verbose=verbose_logging,
         )
 
     elif provider == "elevenlabs":
+        if verbose_logging:
+            logger.info(f"🔀 Routing to ElevenLabs provider (model: {model_name})")
+        
         # Use ElevenLabs
         # Determine voice_id: use voice_id parameter if provided, otherwise use voice parameter
         if voice_id is None:
             if voice is None:
-                raise ValueError(
+                error_msg = (
                     "Either 'voice' or 'voice_id' must be provided for ElevenLabs models. "
                     "Use a friendly name like 'rachel' or a voice ID."
                 )
+                if verbose_logging:
+                    logger.error(f"❌ {error_msg}")
+                raise ValueError(error_msg)
             voice_id = voice
+            if verbose_logging:
+                logger.debug(f"   Using voice parameter as voice_id: {voice_id}")
         else:
             # voice_id was explicitly provided, use it
-            pass
+            if verbose_logging:
+                logger.debug(f"   Using provided voice_id: {voice_id}")
 
         # Set default output_format for ElevenLabs if not provided
         if output_format is None:
             output_format = "pcm_44100"
+            if verbose_logging:
+                logger.debug(f"   Using default output_format: {output_format}")
 
         return stream_tts_elevenlabs(
             text_chunks=text_chunks,
@@ -664,21 +724,29 @@ def stream_tts(
             optimize_streaming_latency=optimize_streaming_latency,
             enable_logging=enable_logging,
             stream_mode=stream_mode,
-            return_generator=return_generator,
+            verbose=verbose_logging,
         )
 
     elif provider == "groq":
+        if verbose_logging:
+            logger.info(f"🔀 Routing to Groq provider (model: {model_name})")
+        
         # Use Groq
         if voice is None:
-            raise ValueError(
+            error_msg = (
                 "Voice must be provided for Groq models. "
                 "For English model: 'austin', 'hannah', or 'troy'. "
                 "For Arabic model: 'salma' or 'omar'."
             )
+            if verbose_logging:
+                logger.error(f"❌ {error_msg}")
+            raise ValueError(error_msg)
 
         # Set default response_format for Groq if not provided
         if response_format is None:
             response_format = "wav"
+            if verbose_logging:
+                logger.debug(f"   Using default response_format: {response_format}")
 
         return stream_tts_groq(
             text_chunks=text_chunks,
@@ -686,14 +754,17 @@ def stream_tts(
             model=model_name,
             stream_mode=stream_mode,
             response_format=response_format,
-            return_generator=return_generator,
+            verbose=verbose_logging,
         )
 
     else:
-        raise ValueError(
+        error_msg = (
             f"Unknown provider: {provider}. Supported providers are 'openai', 'elevenlabs', and 'groq'. "
             f"Use format 'provider/model_name' (e.g., 'openai/tts-1', 'elevenlabs/eleven_multilingual_v2', or 'groq/canopylabs/orpheus-v1-english')."
         )
+        if verbose_logging:
+            logger.error(f"❌ {error_msg}")
+        raise ValueError(error_msg)
 
 
 def stream_tts_elevenlabs(
@@ -706,8 +777,8 @@ def stream_tts_elevenlabs(
     optimize_streaming_latency: Optional[int] = None,
     enable_logging: bool = True,
     stream_mode: bool = False,
-    return_generator: bool = False,
-) -> Union[None, Generator[bytes, None, None]]:
+    verbose: Optional[bool] = None,
+) -> None:
     """
     Stream text-to-speech using Eleven Labs TTS API, processing chunks and playing the resulting audio stream.
 
@@ -718,53 +789,58 @@ def stream_tts_elevenlabs(
         model_id (str): The model ID to use. Default is "eleven_multilingual_v2".
         stability (float): Stability setting for voice (0.0 to 1.0). Default is 0.5.
         similarity_boost (float): Similarity boost setting (0.0 to 1.0). Default is 0.75.
-        output_format (str): Output audio format. Options: "mp3_22050_32", "mp3_24000_48", "mp3_44100_32",
-            "mp3_44100_64", "mp3_44100_96", "mp3_44100_128", "mp3_44100_192", "pcm_8000", "pcm_16000",
-            "pcm_22050", "pcm_24000", "pcm_32000", "pcm_44100", "pcm_48000", "ulaw_8000", "alaw_8000",
-            "opus_48000_32", "opus_48000_64", "opus_48000_96", "opus_48000_128", "opus_48000_192".
-            Default is "pcm_44100" for compatibility with play_audio. When return_generator is True,
-            "mp3_44100_128" is recommended for web streaming.
+        output_format (str): Output audio format. Options: "pcm_8000", "pcm_16000", "pcm_22050", "pcm_24000",
+            "pcm_32000", "pcm_44100", "pcm_48000", "ulaw_8000", "alaw_8000".
+            Default is "pcm_44100" for compatibility with play_audio.
         optimize_streaming_latency (Optional[int]): Latency optimization (0-4). Default is None.
         enable_logging (bool): Enable logging for the request. Default is True.
         stream_mode (bool): If True, process chunks as they arrive in real-time. If False, join all chunks
             and process as a single request. Default is False.
-        return_generator (bool): If True, returns a generator that yields audio chunks as bytes (for FastAPI streaming).
-            If False, plays audio to system output. Default is False.
+        verbose (Optional[bool]): Enable verbose logging. If None, uses VOICE_AGENTS_VERBOSE_LOGGING env var.
 
     Returns:
-        Union[None, Generator[bytes, None, None]]:
-            - None if return_generator is False (plays audio)
-            - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
+        None: Plays audio to system output.
 
     Details:
         - This function uses the Eleven Labs TTS API streaming endpoint via httpx.
         - When stream_mode is False, all `text_chunks` are joined into a single string for synthesis.
         - When stream_mode is True, each chunk is processed individually as it arrives.
-        - When return_generator is False, audio is streamed, buffered, and played using the `play_audio` helper.
-        - When return_generator is True, audio chunks are yielded as bytes for use with FastAPI StreamingResponse.
+        - Audio is streamed, buffered, and played using the `play_audio` helper.
         - For PCM formats, handles audio data as int16 samples.
-        - For MP3/Opus formats, when return_generator is True, chunks are yielded directly without decoding.
         - Useful for real-time output, agent system narration, or API streaming.
 
     Example:
         >>> # Play audio locally
         >>> stream_tts_elevenlabs(["Hello world"], voice_id="rachel")
         >>>
-        >>> # Get generator for FastAPI
-        >>> from fastapi.responses import StreamingResponse
-        >>> generator = stream_tts_elevenlabs(
-        ...     ["Hello world"],
-        ...     voice_id="rachel",
-        ...     output_format="mp3_44100_128",
-        ...     return_generator=True
-        ... )
-        >>> return StreamingResponse(generator, media_type="audio/mpeg")
+        >>> # With verbose logging
+        >>> stream_tts_elevenlabs(["Hello world"], voice_id="rachel", verbose=True)
     """
+    # Determine if verbose logging is enabled
+    verbose_logging = (
+        verbose if verbose is not None else _verbose_logging_enabled
+    )
+
+    if verbose_logging:
+        logger.info("=" * 80)
+        logger.info("🎙️  Starting ElevenLabs TTS Request")
+        logger.info(
+            f"   Model: {model_id} | Voice ID: {voice_id} | Format: {output_format} | "
+            f"Stream Mode: {stream_mode} | Stability: {stability} | Similarity: {similarity_boost}"
+        )
+        if isinstance(text_chunks, (list, tuple)):
+            logger.debug(f"   Text chunks: {len(text_chunks)} chunks")
+            for i, chunk in enumerate(text_chunks[:3]):
+                logger.debug(f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}")
+
     # Get API key from parameter or environment variable
     api_key = get_api_key(
         "ELEVENLABS_API_KEY",
         "https://elevenlabs.io/app/settings/api-keys",
     )
+
+    if verbose_logging:
+        logger.debug("✅ API key retrieved successfully")
 
     # Check if voice_id is a friendly name and look it up in ELEVENLABS_VOICES
     # If it's not found, assume it's already a voice ID
@@ -977,14 +1053,6 @@ def stream_tts_elevenlabs(
 
                 response.raise_for_status()
 
-                # If return_generator is True, yield chunks directly
-                if return_generator:
-                    # Stream audio chunks and yield them
-                    for chunk in response.iter_bytes():
-                        if chunk:
-                            yield chunk
-                    return
-
                 # Buffer to accumulate audio data
                 buffer = bytearray()
 
@@ -1071,14 +1139,6 @@ def stream_tts_elevenlabs(
 
                     response.raise_for_status()
 
-                    # If return_generator is True, yield chunks directly
-                    if return_generator:
-                        # Stream audio chunks for this text chunk and yield them
-                        for audio_chunk in response.iter_bytes():
-                            if audio_chunk:
-                                yield audio_chunk
-                        continue
-
                     # Buffer to accumulate audio data for this chunk
                     buffer = bytearray()
 
@@ -1106,8 +1166,8 @@ def stream_tts_groq(
     model: str = "canopylabs/orpheus-v1-english",
     stream_mode: bool = False,
     response_format: str = "wav",
-    return_generator: bool = False,
-) -> Union[None, Generator[bytes, None, None]]:
+    verbose: Optional[bool] = None,
+) -> None:
     """
     Stream text-to-speech using Groq's fast TTS API, processing chunks and playing the resulting audio stream.
 
@@ -1123,22 +1183,17 @@ def stream_tts_groq(
         stream_mode (bool): If True, process chunks as they arrive in real-time. If False, join all chunks
             and process as a single request. Default is False.
         response_format (str): Audio format to request from Groq. Options: "wav", "mp3", "opus", "aac", "flac".
-            Default is "wav". Note: When return_generator is False and format is not "wav",
-            audio will be streamed as bytes but may not play correctly.
-        return_generator (bool): If True, returns a generator that yields audio chunks as bytes (for FastAPI streaming).
-            If False, plays audio to system output. Default is False.
+            Default is "wav". Note: Only "wav" format is supported for direct playback.
+        verbose (Optional[bool]): Enable verbose logging. If None, uses VOICE_AGENTS_VERBOSE_LOGGING env var.
 
     Returns:
-        Union[None, Generator[bytes, None, None]]:
-            - None if return_generator is False (plays audio)
-            - Generator[bytes, None, None] if return_generator is True (yields audio chunks)
+        None: Plays audio to system output.
 
     Details:
         - This function uses the Groq TTS API's streaming capabilities via httpx.
         - When stream_mode is False, all `text_chunks` are joined into a single string for synthesis.
         - When stream_mode is True, each chunk is processed individually as it arrives.
-        - When return_generator is False, audio is streamed, buffered, and played using the `play_audio` helper.
-        - When return_generator is True, audio chunks are yielded as bytes for use with FastAPI StreamingResponse.
+        - Audio is streamed, buffered, and played using the `play_audio` helper.
         - Supports vocal directions in text (e.g., "[cheerful] Hello world").
         - Useful for real-time output, agent system narration, or API streaming.
 
@@ -1153,20 +1208,33 @@ def stream_tts_groq(
         ...     model="canopylabs/orpheus-v1-english"
         ... )
         >>>
-        >>> # Get generator for FastAPI
-        >>> from fastapi.responses import StreamingResponse
-        >>> generator = stream_tts_groq(
-        ...     ["Hello world"],
-        ...     voice="austin",
-        ...     return_generator=True
-        ... )
-        >>> return StreamingResponse(generator, media_type="audio/wav")
+        >>> # With verbose logging
+        >>> stream_tts_groq(["Hello world"], voice="austin", verbose=True)
     """
+    # Determine if verbose logging is enabled
+    verbose_logging = (
+        verbose if verbose is not None else _verbose_logging_enabled
+    )
+
+    if verbose_logging:
+        logger.info("=" * 80)
+        logger.info("🎙️  Starting Groq TTS Request")
+        logger.info(
+            f"   Model: {model} | Voice: {voice} | Format: {response_format} | Stream Mode: {stream_mode}"
+        )
+        if isinstance(text_chunks, (list, tuple)):
+            logger.debug(f"   Text chunks: {len(text_chunks)} chunks")
+            for i, chunk in enumerate(text_chunks[:3]):
+                logger.debug(f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}")
+
     # Get API key from environment variable
     api_key = get_api_key(
         "GROQ_API_KEY",
         "https://console.groq.com/keys",
     )
+
+    if verbose_logging:
+        logger.debug("✅ API key retrieved successfully")
 
     # Validate model
     if model not in GROQ_TTS_MODELS:
@@ -1215,57 +1283,6 @@ def stream_tts_groq(
             "input": text,
             "response_format": response_format,
         }
-
-        # If return_generator is True, yield chunks directly
-        if return_generator:
-            # Make streaming request to Groq TTS API
-            try:
-                with httpx.stream(
-                    "POST",
-                    url,
-                    headers=headers,
-                    json=payload,
-                    timeout=30.0,
-                ) as response:
-                    # Check for authentication errors
-                    if response.status_code == 401:
-                        error_text = (
-                            "No additional error details available"
-                        )
-                        try:
-                            error_bytes = b""
-                            for chunk in response.iter_bytes():
-                                error_bytes += chunk
-                            if error_bytes:
-                                error_text = error_bytes.decode(
-                                    "utf-8", errors="ignore"
-                                )
-                        except Exception as e:
-                            error_text = f"Could not read error response: {str(e)}"
-
-                        raise ValueError(
-                            f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
-                            f"The API key may be invalid, expired, or not set correctly.\n"
-                            f"Error details: {error_text}\n"
-                            f"Get your API key from: https://console.groq.com/keys"
-                        )
-
-                    response.raise_for_status()
-
-                    # Stream audio chunks and yield them
-                    for audio_chunk in response.iter_bytes():
-                        if audio_chunk:
-                            yield audio_chunk
-            except httpx.HTTPStatusError as e:
-                # Re-raise ValueError if we already converted it
-                if isinstance(e, ValueError):
-                    raise
-                # Otherwise, provide a generic error message
-                raise ValueError(
-                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
-                    f"URL: {e.request.url}"
-                ) from e
-            return
 
         # Buffer to accumulate audio data
         buffer = bytearray()
@@ -1366,7 +1383,7 @@ def stream_tts_groq(
                         )
                 elif response_format != "wav":
                     # For non-WAV formats, we can't play directly
-                    # User should use return_generator=True for these formats
+                    print(f"Warning: {response_format} format not supported for direct playback. Only 'wav' format is supported.")
                     pass
         except httpx.HTTPStatusError as e:
             # Re-raise ValueError if we already converted it
@@ -1390,57 +1407,6 @@ def stream_tts_groq(
                 "input": chunk.strip(),
                 "response_format": response_format,
             }
-
-            # If return_generator is True, yield chunks directly
-            if return_generator:
-                # Make streaming request to Groq TTS API for this chunk
-                try:
-                    with httpx.stream(
-                        "POST",
-                        url,
-                        headers=headers,
-                        json=payload,
-                        timeout=30.0,
-                    ) as response:
-                        # Check for authentication errors
-                        if response.status_code == 401:
-                            error_text = "No additional error details available"
-                            try:
-                                error_bytes = b""
-                                for (
-                                    audio_chunk
-                                ) in response.iter_bytes():
-                                    error_bytes += audio_chunk
-                                if error_bytes:
-                                    error_text = error_bytes.decode(
-                                        "utf-8", errors="ignore"
-                                    )
-                            except Exception as e:
-                                error_text = f"Could not read error response: {str(e)}"
-
-                            raise ValueError(
-                                f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
-                                f"The API key may be invalid, expired, or not set correctly.\n"
-                                f"Error details: {error_text}\n"
-                                f"Get your API key from: https://console.groq.com/keys"
-                            )
-
-                        response.raise_for_status()
-
-                        # Stream audio chunks for this text chunk and yield them
-                        for audio_chunk in response.iter_bytes():
-                            if audio_chunk:
-                                yield audio_chunk
-                except httpx.HTTPStatusError as e:
-                    # Re-raise ValueError if we already converted it
-                    if isinstance(e, ValueError):
-                        raise
-                    # Otherwise, provide a generic error message
-                    raise ValueError(
-                        f"HTTP error {e.response.status_code}: {e.response.text}\n"
-                        f"URL: {e.request.url}"
-                    ) from e
-                continue
 
             # Buffer to accumulate audio data for this chunk
             buffer = bytearray()
@@ -1543,7 +1509,7 @@ def stream_tts_groq(
                             )
                     elif response_format != "wav":
                         # For non-WAV formats, we can't play directly
-                        # User should use return_generator=True for these formats
+                        print(f"Warning: {response_format} format not supported for direct playback. Only 'wav' format is supported.")
                         pass
             except httpx.HTTPStatusError as e:
                 # Re-raise ValueError if we already converted it

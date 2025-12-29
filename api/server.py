@@ -17,7 +17,7 @@ from fastapi.responses import StreamingResponse
 from loguru import logger
 from pydantic import BaseModel, Field
 
-from voice_agents.main import (
+from voice_agents import (
     format_text_for_speech,
     get_media_type_for_format,
     list_models,

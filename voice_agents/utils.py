@@ -119,12 +119,27 @@ def play_audio(audio_data: np.ndarray) -> None:
     Args:
         audio_data: Audio data as numpy array of int16 samples
     """
-    if len(audio_data) > 0:
+    if len(audio_data) == 0:
+        print("Warning: Cannot play empty audio data.")
+        return
+    
+    try:
         # Convert int16 to float32 and normalize to [-1, 1] range
         # int16 range is [-32768, 32767]
         audio_float = audio_data.astype(np.float32) / 32768.0
+        
+        # Check for valid audio data
+        if np.all(np.isnan(audio_float)) or np.all(audio_float == 0):
+            print("Warning: Audio data appears to be silent or invalid.")
+            return
+        
         sd.play(audio_float, SAMPLE_RATE)
         sd.wait()
+    except Exception as e:
+        raise ValueError(
+            f"Error playing audio: {e}\n"
+            f"Audio data shape: {audio_data.shape}, dtype: {audio_data.dtype}"
+        ) from e
 
 
 def get_api_key(env_var_name: str, api_key_url: str) -> str:
@@ -171,13 +186,57 @@ def process_and_play_audio_buffer(
     Raises:
         ValueError: If format is unsupported, dependencies are missing, or decoding fails
     """
+    # Check if buffer is empty
+    if len(buffer) == 0:
+        if warn_on_empty:
+            print(
+                f"Warning: No audio data received for {response_format.upper()} format. Skipping playback."
+            )
+            return
+        else:
+            raise ValueError(
+                f"No audio data received for {response_format.upper()} format."
+            )
+    
     # Handle PCM format
-    if response_format == "pcm" and len(buffer) >= 2:
+    if response_format == "pcm":
+        if len(buffer) < 2:
+            if warn_on_empty:
+                print(
+                    f"Warning: Buffer too small ({len(buffer)} bytes) for PCM format. Need at least 2 bytes."
+                )
+                return
+            else:
+                raise ValueError(
+                    f"Buffer too small ({len(buffer)} bytes) for PCM format. Need at least 2 bytes."
+                )
+        
         # Ensure we have complete samples (multiples of 2 bytes)
         complete_samples_size = (len(buffer) // 2) * 2
         complete_buffer = bytes(buffer[:complete_samples_size])
-        audio = np.frombuffer(complete_buffer, dtype=np.int16)
-        play_audio(audio)
+        
+        if len(complete_buffer) == 0:
+            if warn_on_empty:
+                print("Warning: No complete audio samples in buffer. Skipping playback.")
+                return
+            else:
+                raise ValueError("No complete audio samples in buffer.")
+        
+        try:
+            audio = np.frombuffer(complete_buffer, dtype=np.int16)
+            if len(audio) == 0:
+                if warn_on_empty:
+                    print("Warning: Audio array is empty. Skipping playback.")
+                    return
+                else:
+                    raise ValueError("Audio array is empty.")
+            
+            play_audio(audio)
+        except Exception as e:
+            raise ValueError(
+                f"Error processing PCM audio: {e}\n"
+                f"Buffer size: {len(buffer)} bytes, Complete samples: {len(complete_buffer)} bytes"
+            ) from e
         return
 
     # Handle compressed audio formats
