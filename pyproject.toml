@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.poetry]
 name = "voice-agents"
-version = "0.1.6"
+version = "0.1.7"
 description = "A comprehensive Python library for building production-ready voice agents with multi-provider support. Features real-time streaming TTS/STT, OpenAI, ElevenLabs, and Groq integration, audio processing, and seamless conversational AI capabilities."
 license = "MIT"
 authors = ["Kye Gomez <kye@swarms.world>"]

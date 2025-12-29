@@ -17,8 +17,7 @@ text = speech_to_text_elevenlabs(
     audio_data=audio_data,
     sample_rate=16000,
     model_id="scribe_v1",
-    realtime=False
+    realtime=False,
 )
 
 print(f"Transcribed text: {text}")
-

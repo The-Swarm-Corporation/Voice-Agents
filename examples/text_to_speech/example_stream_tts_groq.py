@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 # Load environment variables (GROQ_API_KEY)
 load_dotenv()
 
+
 def main():
     # Example 1: Basic text-to-speech with Groq
     print("\n--- Example 1: Basic TTS with Groq ---")
@@ -13,7 +14,7 @@ def main():
         stream_tts_groq(
             text_chunks=[text],
             voice="austin",
-            model="canopylabs/orpheus-v1-english"
+            model="canopylabs/orpheus-v1-english",
         )
     except Exception as e:
         print(f"Error in Basic TTS: {e}")
@@ -26,7 +27,7 @@ def main():
         stream_tts_groq(
             text_chunks=[expressive_text],
             voice="hannah",
-            model="canopylabs/orpheus-v1-english"
+            model="canopylabs/orpheus-v1-english",
         )
     except Exception as e:
         print(f"Error in Expressive TTS: {e}")
@@ -39,17 +40,17 @@ def main():
     By splitting long text into natural sentences, we can achieve low-latency playback.
     This makes the interaction feel more like a real conversation.
     """
-    
+
     # Format the text into speech-friendly chunks
     chunks = format_text_for_speech(long_text)
-    
+
     try:
         # stream_mode=True processes each chunk as it arrives
         stream_tts_groq(
             text_chunks=chunks,
             voice="troy",
             model="canopylabs/orpheus-v1-english",
-            stream_mode=True
+            stream_mode=True,
         )
     except Exception as e:
         print(f"Error in Streaming TTS: {e}")
@@ -61,11 +62,11 @@ def main():
         stream_tts_groq(
             text_chunks=[arabic_text],
             voice="salma",
-            model="canopylabs/orpheus-arabic-saudi"
+            model="canopylabs/orpheus-arabic-saudi",
         )
     except Exception as e:
         print(f"Error in Arabic TTS: {e}")
 
+
 if __name__ == "__main__":
     main()
-

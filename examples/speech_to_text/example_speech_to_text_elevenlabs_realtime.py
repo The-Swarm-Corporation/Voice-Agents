@@ -18,10 +18,10 @@ for message in speech_to_text_elevenlabs(
     sample_rate=16000,
     realtime=True,
     audio_format="pcm_16000",
-    commit_strategy="vad"
+    commit_strategy="vad",
 ):
     message_type = message.get("message_type")
-    
+
     if message_type == "session_started":
         print(f"Session started: {message.get('session_id')}")
     elif message_type == "partial_transcript":
@@ -32,7 +32,8 @@ for message in speech_to_text_elevenlabs(
         print(f"Committed with timestamps: {message.get('text')}")
         words = message.get("words", [])
         if words:
-            print(f"Words: {[(w.get('text'), w.get('start'), w.get('end')) for w in words[:5]]}")
+            print(
+                f"Words: {[(w.get('text'), w.get('start'), w.get('end')) for w in words[:5]]}"
+            )
     elif message_type in ["error", "auth_error", "quota_exceeded"]:
         print(f"Error: {message.get('error')}")
-

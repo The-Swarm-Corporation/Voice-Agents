@@ -120,28 +120,3 @@ for chunk in streaming_text4:
         print(f"Error handled: {e}")
 
 callback_safe.flush()
-print("Error handling example complete!\n")
-
-# Example 6: Integration with agent frameworks
-print("Example 6: Integration with agent frameworks")
-print(
-    """
-To use with an agent framework (like LangChain, AutoGen, etc.):
-
-from voice_agents import StreamingTTSCallback
-from your_agent_framework import Agent
-
-# Create callback
-tts_callback = StreamingTTSCallback(voice="alloy")
-
-# Use as streaming callback
-agent = Agent(streaming_callback=tts_callback)
-
-# When agent streams output, it will automatically be converted to speech
-response = agent.run("Tell me about artificial intelligence")
-
-# Don't forget to flush at the end
-tts_callback.flush()
-"""
-)
-print("Integration example (code shown above)")

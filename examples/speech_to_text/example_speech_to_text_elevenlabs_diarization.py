@@ -14,8 +14,7 @@ text = speech_to_text_elevenlabs(
     diarize=True,
     num_speakers=2,  # Expected number of speakers
     timestamps_granularity="word",
-    realtime=False
+    realtime=False,
 )
 
 print(f"Transcribed text with speaker labels: {text}")
-

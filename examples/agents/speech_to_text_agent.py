@@ -21,7 +21,7 @@ transcribed_text = speech_to_text_groq(
     audio_data=audio_data,
     sample_rate=16000,
     model="whisper-large-v3-turbo",
-    response_format="text"
+    response_format="text",
 )
 
 # Run the agent with the transcribed text as the task
