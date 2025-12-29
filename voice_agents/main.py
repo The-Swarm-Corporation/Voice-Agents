@@ -8,6 +8,7 @@ import sounddevice as sd
 from dotenv import load_dotenv
 from loguru import logger
 
+from voice_agents.client import _http_client
 from voice_agents.models_and_voices import (
     ELEVENLABS_TTS_MODELS,
     ELEVENLABS_VOICES,
@@ -18,7 +19,6 @@ from voice_agents.models_and_voices import (
     VOICES,
     VoiceType,
 )
-
 from voice_agents.utils import (
     format_text_for_speech,
     get_api_key,
@@ -227,12 +227,11 @@ def stream_tts_openai(
                     "🚀 Sending HTTP POST request to OpenAI TTS API..."
                 )
 
-            with httpx.stream(
+            with _http_client.stream(
                 "POST",
                 url,
                 headers=headers,
                 json=payload,
-                timeout=30.0,
             ) as response:
                 if verbose_logging:
                     logger.debug(
@@ -367,12 +366,11 @@ def stream_tts_openai(
                         f"🚀 Sending request for chunk {chunk_index}..."
                     )
 
-                with httpx.stream(
+                with _http_client.stream(
                     "POST",
                     url,
                     headers=headers,
                     json=payload,
-                    timeout=30.0,
                 ) as response:
                     if verbose_logging:
                         logger.debug(
@@ -1053,13 +1051,12 @@ def stream_tts_elevenlabs(
 
         # Make streaming request to Eleven Labs API
         try:
-            with httpx.stream(
+            with _http_client.stream(
                 "POST",
                 url,
                 headers=headers,
                 params=params,
                 json=payload,
-                timeout=30.0,
             ) as response:
                 # Check for authentication errors first (before reading response)
                 if response.status_code == 401:
@@ -1201,13 +1198,12 @@ def stream_tts_elevenlabs(
 
             # Make streaming request to Eleven Labs API for this chunk
             try:
-                with httpx.stream(
+                with _http_client.stream(
                     "POST",
                     url,
                     headers=headers,
                     params=params,
                     json=payload,
-                    timeout=30.0,
                 ) as response:
                     # Check for authentication errors first (before reading response)
                     if response.status_code == 401:
@@ -1463,12 +1459,11 @@ def stream_tts_groq(
 
         # Make streaming request to Groq TTS API
         try:
-            with httpx.stream(
+            with _http_client.stream(
                 "POST",
                 url,
                 headers=headers,
                 json=payload,
-                timeout=30.0,
             ) as response:
                 # Check for authentication errors
                 if response.status_code == 401:
@@ -1589,12 +1584,11 @@ def stream_tts_groq(
 
             # Make streaming request to Groq TTS API for this chunk
             try:
-                with httpx.stream(
+                with _http_client.stream(
                     "POST",
                     url,
                     headers=headers,
                     json=payload,
-                    timeout=30.0,
                 ) as response:
                     # Check for authentication errors
                     if response.status_code == 401:
@@ -1712,6 +1706,8 @@ class StreamingTTSCallback:
         model: The TTS model to use in format "provider/model_name". Default is "openai/tts-1".
             Examples: "openai/tts-1", "openai/tts-1-hd", "elevenlabs/eleven_multilingual_v2"
         min_sentence_length: Minimum length before sending a sentence to TTS. Default is 10.
+        stream_mode: Whether to use streaming mode for TTS. Default is False.
+        formatting: Whether to format text for speech. If False, raw text is passed to TTS. Default is True.
     """
 
     def __init__(
@@ -1719,13 +1715,32 @@ class StreamingTTSCallback:
         voice: str = "alloy",
         model: str = "openai/tts-1",
         min_sentence_length: int = 10,
+        stream_mode: bool = False,
+        formatting: bool = True,
     ):
         self.voice = voice
         self.model = model
         self.min_sentence_length = min_sentence_length
+        self.stream_mode = stream_mode
+        self.formatting = formatting
         self.buffer = ""
         # Pattern to match sentence endings: . ! ? followed by whitespace or end of string
         self.sentence_endings = re.compile(r"[.!?](?:\s+|$)")
+
+    def _format_text(self, text: str) -> Union[str, List[str]]:
+        """
+        Format text for speech if formatting is enabled, otherwise return raw text.
+
+        Args:
+            text: The text to format.
+
+        Returns:
+            List of formatted text chunks if formatting is enabled, otherwise raw text string.
+        """
+        if self.formatting:
+            formatted = format_text_for_speech(text)
+            return formatted if formatted else [text]
+        return text
 
     def __call__(self, chunk: str) -> None:
         """
@@ -1752,14 +1767,17 @@ class StreamingTTSCallback:
                     and len(sentence) >= self.min_sentence_length
                 ):
                     try:
-                        # Format and stream the sentence
-                        formatted = format_text_for_speech(sentence)
+                        formatted = self._format_text(sentence)
                         if formatted:
+                            # Ensure formatted is a list/iterable, not a string
+                            # (strings are iterable and would be treated as character-by-character)
+                            if isinstance(formatted, str):
+                                formatted = [formatted]
                             stream_tts(
                                 formatted,
                                 voice=self.voice,
                                 model=self.model,
-                                stream_mode=True,
+                                stream_mode=self.stream_mode,
                             )
                     except Exception as e:
                         print(f"Error in TTS streaming: {e}")
@@ -1802,15 +1820,17 @@ class StreamingTTSCallback:
         """
         if self.buffer.strip():
             try:
-                formatted = format_text_for_speech(
-                    self.buffer.strip()
-                )
+                formatted = self._format_text(self.buffer.strip())
                 if formatted:
+                    # Ensure formatted is a list/iterable, not a string
+                    # (strings are iterable and would be treated as character-by-character)
+                    if isinstance(formatted, str):
+                        formatted = [formatted]
                     stream_tts(
                         formatted,
                         voice=self.voice,
                         model=self.model,
-                        stream_mode=True,
+                        stream_mode=self.stream_mode,
                     )
             except Exception as e:
                 print(f"Error flushing TTS buffer: {e}")

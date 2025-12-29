@@ -9,6 +9,7 @@ from voice_agents.utils import (
 )
 
 from voice_agents.models_and_voices import GROQ_STT_MODELS
+from voice_agents.client import _http_client
 
 
 def speech_to_text(
@@ -154,47 +155,46 @@ def speech_to_text(
 
     try:
         # Make request to OpenAI Whisper API
-        with httpx.Client(timeout=30.0) as client:
-            response = client.post(
-                url,
-                headers=headers,
-                files=files,
-                data=data,
-            )
+        response = _http_client.post(
+            url,
+            headers=headers,
+            files=files,
+            data=data,
+        )
 
-            # Check for authentication errors
-            if response.status_code == 401:
-                error_text = "No additional error details available"
-                try:
-                    if response.text:
-                        error_text = response.text
-                except Exception as e:
-                    error_text = (
-                        f"Could not read error response: {str(e)}"
-                    )
-
-                raise ValueError(
-                    f"Authentication failed (401). Please check your OPENAI_API_KEY.\n"
-                    f"The API key may be invalid, expired, or not set correctly.\n"
-                    f"Error details: {error_text}\n"
-                    f"Get your API key from: https://platform.openai.com/api-keys"
+        # Check for authentication errors
+        if response.status_code == 401:
+            error_text = "No additional error details available"
+            try:
+                if response.text:
+                    error_text = response.text
+            except Exception as e:
+                error_text = (
+                    f"Could not read error response: {str(e)}"
                 )
 
-            response.raise_for_status()
+            raise ValueError(
+                f"Authentication failed (401). Please check your OPENAI_API_KEY.\n"
+                f"The API key may be invalid, expired, or not set correctly.\n"
+                f"Error details: {error_text}\n"
+                f"Get your API key from: https://platform.openai.com/api-keys"
+            )
 
-            # Parse response based on format
-            if response_format == "text":
-                return response.text.strip()
-            elif response_format == "json":
-                result = response.json()
-                return result.get("text", "")
-            elif response_format == "verbose_json":
-                result = response.json()
-                return result.get("text", "")
-            elif response_format in ["srt", "vtt"]:
-                return response.text
-            else:
-                return response.text.strip()
+        response.raise_for_status()
+
+        # Parse response based on format
+        if response_format == "text":
+            return response.text.strip()
+        elif response_format == "json":
+            result = response.json()
+            return result.get("text", "")
+        elif response_format == "verbose_json":
+            result = response.json()
+            return result.get("text", "")
+        elif response_format in ["srt", "vtt"]:
+            return response.text
+        else:
+            return response.text.strip()
     except httpx.HTTPStatusError as e:
         # Re-raise ValueError if we already converted it
         if isinstance(e, ValueError):
@@ -707,53 +707,48 @@ def speech_to_text_elevenlabs(
 
         try:
             # Make request to ElevenLabs API
-            with httpx.Client(
-                timeout=300.0
-            ) as client:  # Longer timeout for large files
-                response = client.post(
-                    url,
-                    headers=headers,
-                    files=files,
-                    data=data,
+            # Use longer timeout for large files
+            response = _http_client.post(
+                url,
+                headers=headers,
+                files=files,
+                data=data,
+                timeout=300.0,
+            )
+
+            # Check for authentication errors
+            if response.status_code == 401:
+                error_text = "No additional error details available"
+                try:
+                    if response.text:
+                        error_text = response.text
+                except Exception as e:
+                    error_text = (
+                        f"Could not read error response: {str(e)}"
+                    )
+
+                raise ValueError(
+                    f"Authentication failed (401). Please check your ELEVENLABS_API_KEY.\n"
+                    f"The API key may be invalid, expired, or not set correctly.\n"
+                    f"Error details: {error_text}\n"
+                    f"Get your API key from: https://elevenlabs.io/app/settings/api-keys"
                 )
 
-                # Check for authentication errors
-                if response.status_code == 401:
-                    error_text = (
-                        "No additional error details available"
-                    )
-                    try:
-                        if response.text:
-                            error_text = response.text
-                    except Exception as e:
-                        error_text = (
-                            f"Could not read error response: {str(e)}"
-                        )
+            response.raise_for_status()
 
-                    raise ValueError(
-                        f"Authentication failed (401). Please check your ELEVENLABS_API_KEY.\n"
-                        f"The API key may be invalid, expired, or not set correctly.\n"
-                        f"Error details: {error_text}\n"
-                        f"Get your API key from: https://elevenlabs.io/app/settings/api-keys"
-                    )
+            # Parse response
+            result = response.json()
 
-                response.raise_for_status()
-
-                # Parse response
-                result = response.json()
-
-                # Handle multi-channel response
-                if "transcripts" in result:
-                    # Multi-channel response
-                    transcripts = result["transcripts"]
-                    # Combine all transcripts
-                    text_parts = [
-                        t.get("text", "") for t in transcripts
-                    ]
-                    return " ".join(text_parts)
-                else:
-                    # Single channel response
-                    return result.get("text", "")
+            # Handle multi-channel response
+            if "transcripts" in result:
+                # Multi-channel response
+                transcripts = result["transcripts"]
+                # Combine all transcripts
+                text_parts = [t.get("text", "") for t in transcripts]
+                return " ".join(text_parts)
+            else:
+                # Single channel response
+                return result.get("text", "")
 
         except httpx.HTTPStatusError as e:
             # Re-raise ValueError if we already converted it
@@ -975,54 +970,53 @@ def speech_to_text_groq(
 
     try:
         # Make request to Groq API
-        with httpx.Client(
-            timeout=300.0
-        ) as client:  # Longer timeout for large files
-            response = client.post(
-                url,
-                headers=headers,
-                files=files,
-                data=data,
-            )
+        # Use longer timeout for large files
+        response = _http_client.post(
+            url,
+            headers=headers,
+            files=files,
+            data=data,
+            timeout=300.0,
+        )
 
-            # Check for authentication errors
-            if response.status_code == 401:
-                error_text = "No additional error details available"
-                try:
-                    if response.text:
-                        error_text = response.text
-                except Exception as e:
-                    error_text = (
-                        f"Could not read error response: {str(e)}"
-                    )
-
-                raise ValueError(
-                    f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
-                    f"The API key may be invalid, expired, or not set correctly.\n"
-                    f"Error details: {error_text}\n"
-                    f"Get your API key from: https://console.groq.com/keys"
+        # Check for authentication errors
+        if response.status_code == 401:
+            error_text = "No additional error details available"
+            try:
+                if response.text:
+                    error_text = response.text
+            except Exception as e:
+                error_text = (
+                    f"Could not read error response: {str(e)}"
                 )
 
-            response.raise_for_status()
+            raise ValueError(
+                f"Authentication failed (401). Please check your GROQ_API_KEY.\n"
+                f"The API key may be invalid, expired, or not set correctly.\n"
+                f"Error details: {error_text}\n"
+                f"Get your API key from: https://console.groq.com/keys"
+            )
 
-            # Parse response based on format
-            if response_format == "text":
-                return response.text.strip()
-            elif response_format == "json":
-                result = response.json()
+        response.raise_for_status()
+
+        # Parse response based on format
+        if response_format == "text":
+            return response.text.strip()
+        elif response_format == "json":
+            result = response.json()
+            return result.get("text", "")
+        elif response_format == "verbose_json":
+            result = response.json()
+            # Return the full JSON as a string, or extract text if available
+            if isinstance(result, dict) and "text" in result:
                 return result.get("text", "")
-            elif response_format == "verbose_json":
-                result = response.json()
-                # Return the full JSON as a string, or extract text if available
-                if isinstance(result, dict) and "text" in result:
-                    return result.get("text", "")
-                else:
-                    # Return the full JSON string representation
-                    import json
-
-                    return json.dumps(result, indent=2, default=str)
             else:
-                return response.text.strip()
+                # Return the full JSON string representation
+                import json
+
+                return json.dumps(result, indent=2, default=str)
+        else:
+            return response.text.strip()
     except httpx.HTTPStatusError as e:
         # Re-raise ValueError if we already converted it
         if isinstance(e, ValueError):

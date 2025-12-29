@@ -1,10 +1,3 @@
-"""
-Voice Agents - A comprehensive library for text-to-speech and speech-to-text operations.
-
-This package provides unified interfaces for multiple TTS and STT providers including
-OpenAI, ElevenLabs, and Groq.
-"""
-
 # Import constants and types from models_and_voices
 from voice_agents.models_and_voices import (
     # Constants
