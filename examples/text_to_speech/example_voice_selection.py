@@ -1,4 +1,4 @@
-from voice_agents import stream_tts, VOICES, ELEVENLABS_VOICE_NAMES
+from voice_agents import stream_tts, VOICES
 
 stream_tts(
     ["This demonstrates voice selection."],

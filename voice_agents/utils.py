@@ -119,27 +119,12 @@ def play_audio(audio_data: np.ndarray) -> None:
     Args:
         audio_data: Audio data as numpy array of int16 samples
     """
-    if len(audio_data) == 0:
-        print("Warning: Cannot play empty audio data.")
-        return
-    
-    try:
+    if len(audio_data) > 0:
         # Convert int16 to float32 and normalize to [-1, 1] range
         # int16 range is [-32768, 32767]
         audio_float = audio_data.astype(np.float32) / 32768.0
-        
-        # Check for valid audio data
-        if np.all(np.isnan(audio_float)) or np.all(audio_float == 0):
-            print("Warning: Audio data appears to be silent or invalid.")
-            return
-        
         sd.play(audio_float, SAMPLE_RATE)
         sd.wait()
-    except Exception as e:
-        raise ValueError(
-            f"Error playing audio: {e}\n"
-            f"Audio data shape: {audio_data.shape}, dtype: {audio_data.dtype}"
-        ) from e
 
 
 def get_api_key(env_var_name: str, api_key_url: str) -> str:
@@ -186,57 +171,13 @@ def process_and_play_audio_buffer(
     Raises:
         ValueError: If format is unsupported, dependencies are missing, or decoding fails
     """
-    # Check if buffer is empty
-    if len(buffer) == 0:
-        if warn_on_empty:
-            print(
-                f"Warning: No audio data received for {response_format.upper()} format. Skipping playback."
-            )
-            return
-        else:
-            raise ValueError(
-                f"No audio data received for {response_format.upper()} format."
-            )
-    
     # Handle PCM format
-    if response_format == "pcm":
-        if len(buffer) < 2:
-            if warn_on_empty:
-                print(
-                    f"Warning: Buffer too small ({len(buffer)} bytes) for PCM format. Need at least 2 bytes."
-                )
-                return
-            else:
-                raise ValueError(
-                    f"Buffer too small ({len(buffer)} bytes) for PCM format. Need at least 2 bytes."
-                )
-        
+    if response_format == "pcm" and len(buffer) >= 2:
         # Ensure we have complete samples (multiples of 2 bytes)
         complete_samples_size = (len(buffer) // 2) * 2
         complete_buffer = bytes(buffer[:complete_samples_size])
-        
-        if len(complete_buffer) == 0:
-            if warn_on_empty:
-                print("Warning: No complete audio samples in buffer. Skipping playback.")
-                return
-            else:
-                raise ValueError("No complete audio samples in buffer.")
-        
-        try:
-            audio = np.frombuffer(complete_buffer, dtype=np.int16)
-            if len(audio) == 0:
-                if warn_on_empty:
-                    print("Warning: Audio array is empty. Skipping playback.")
-                    return
-                else:
-                    raise ValueError("Audio array is empty.")
-            
-            play_audio(audio)
-        except Exception as e:
-            raise ValueError(
-                f"Error processing PCM audio: {e}\n"
-                f"Buffer size: {len(buffer)} bytes, Complete samples: {len(complete_buffer)} bytes"
-            ) from e
+        audio = np.frombuffer(complete_buffer, dtype=np.int16)
+        play_audio(audio)
         return
 
     # Handle compressed audio formats
@@ -276,11 +217,17 @@ def process_and_play_audio_buffer(
             elif response_format == "opus":
                 audio_segment = AudioSegment.from_ogg(audio_io)
             elif response_format == "aac":
-                audio_segment = AudioSegment.from_file(audio_io, format="aac")
+                audio_segment = AudioSegment.from_file(
+                    audio_io, format="aac"
+                )
             elif response_format == "flac":
-                audio_segment = AudioSegment.from_file(audio_io, format="flac")
+                audio_segment = AudioSegment.from_file(
+                    audio_io, format="flac"
+                )
             else:
-                raise ValueError(f"Unsupported format: {response_format}")
+                raise ValueError(
+                    f"Unsupported format: {response_format}"
+                )
 
             # Play the audio
             if len(audio_segment) > 0:
@@ -357,7 +304,6 @@ def get_media_type_for_format(output_format: str) -> str:
         return "audio/pcm"
 
 
-
 def record_audio(
     duration: float = 5.0,
     sample_rate: int = 16000,
@@ -388,3 +334,125 @@ def record_audio(
     sd.wait()
     print("Recording finished.")
     return recording
+
+
+def process_audio_buffer(
+    buffer: bytearray, output_format: str, sample_rate: int
+) -> None:
+    """
+    Process audio buffer and play it.
+
+    Args:
+        buffer: Audio data buffer as bytearray
+        output_format: Audio format string (e.g., "pcm_44100", "ulaw_8000", "alaw_8000")
+        sample_rate: Sample rate for audio playback
+
+    Raises:
+        ValueError: If format is unsupported or dependencies are missing
+    """
+    if len(buffer) > 0:
+        if output_format.startswith("pcm_"):
+            # For PCM format, convert bytes to numpy array
+            # PCM is 16-bit signed integers (2 bytes per sample)
+            if len(buffer) >= 2:
+                complete_samples_size = (len(buffer) // 2) * 2
+                complete_buffer = bytes(
+                    buffer[:complete_samples_size]
+                )
+                audio = np.frombuffer(complete_buffer, dtype=np.int16)
+
+                # Play audio with the appropriate sample rate
+                if len(audio) > 0:
+                    audio_float = audio.astype(np.float32) / 32768.0
+                    sd.play(audio_float, sample_rate)
+                    sd.wait()
+        elif output_format.startswith(
+            "ulaw_"
+        ) or output_format.startswith("alaw_"):
+            # For μ-law and A-law formats, we need to decode them
+            # These are 8-bit per sample formats
+            try:
+                import audioop
+
+                if output_format.startswith("ulaw_"):
+                    decoded = audioop.ulaw2lin(bytes(buffer), 2)
+                else:  # alaw
+                    decoded = audioop.alaw2lin(bytes(buffer), 2)
+                audio = np.frombuffer(decoded, dtype=np.int16)
+                if len(audio) > 0:
+                    audio_float = audio.astype(np.float32) / 32768.0
+                    sd.play(audio_float, sample_rate)
+                    sd.wait()
+            except ImportError:
+                raise ValueError(
+                    f"Format '{output_format}' requires the 'audioop' module for decoding. "
+                    "Please use PCM format instead (e.g., 'pcm_44100')."
+                )
+        elif output_format.startswith("mp3_"):
+            # For MP3 format, decode using pydub
+            try:
+                from pydub import AudioSegment
+                import io
+
+                # Create AudioSegment from MP3 bytes
+                audio_segment = AudioSegment.from_mp3(
+                    io.BytesIO(bytes(buffer))
+                )
+
+                # Convert to numpy array
+                audio_data = np.array(
+                    audio_segment.get_array_of_samples()
+                )
+
+                # Handle stereo to mono conversion if needed
+                if audio_segment.channels == 2:
+                    audio_data = audio_data.reshape((-1, 2)).mean(
+                        axis=1
+                    )
+
+                # Normalize to float32
+                if audio_segment.sample_width == 1:
+                    # 8-bit audio
+                    audio_float = (
+                        audio_data.astype(np.float32) / 128.0 - 1.0
+                    )
+                elif audio_segment.sample_width == 2:
+                    # 16-bit audio
+                    audio_float = (
+                        audio_data.astype(np.float32) / 32768.0
+                    )
+                elif audio_segment.sample_width == 4:
+                    # 32-bit audio
+                    audio_float = (
+                        audio_data.astype(np.float32) / 2147483648.0
+                    )
+                else:
+                    audio_float = (
+                        audio_data.astype(np.float32) / 32768.0
+                    )
+
+                # Play audio
+                if len(audio_float) > 0:
+                    sd.play(audio_float, audio_segment.frame_rate)
+                    sd.wait()
+            except ImportError:
+                raise ValueError(
+                    f"MP3 format '{output_format}' requires 'pydub' library for decoding. "
+                    "Install it with: pip install pydub\n"
+                    "Note: pydub also requires ffmpeg to be installed on your system."
+                )
+            except Exception as e:
+                raise ValueError(
+                    f"Error decoding MP3 format '{output_format}': {str(e)}. "
+                    "Please ensure pydub and ffmpeg are properly installed."
+                )
+        elif output_format.startswith("opus_"):
+            # For Opus formats, we'd need to decode first (not implemented)
+            raise ValueError(
+                f"Opus format '{output_format}' not yet supported. Please use PCM or MP3 format."
+            )
+        else:
+            raise ValueError(
+                f"Format '{output_format}' is not yet supported for playback. "
+                "Please use PCM or MP3 format."
+            )

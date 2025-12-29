@@ -214,7 +214,8 @@ async def create_completion(request: CompletionRequest):
         # Determine media type based on model provider
         if request.model.startswith("elevenlabs/"):
             if output_format is None:
-                output_format = "pcm_44100"
+                # Use mp3_44100_128 as default (works on free tier, pcm_44100 requires Pro tier)
+                output_format = "mp3_44100_128"
             media_type = get_media_type_for_format(output_format)
         elif request.model.startswith("openai/"):
             if response_format is None:

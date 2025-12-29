@@ -1046,4 +1046,3 @@ def speech_to_text_groq(
         # Close the file handle
         if "files" in locals() and files.get("file"):
             files["file"][1].close()
-

@@ -112,5 +112,3 @@ GROQ_ORPHEUS_ARABIC_VOICES: List[str] = [
     "salma",
     "omar",
 ]
-
-

@@ -1,4 +1,9 @@
-from voice_agents import record_audio, speech_to_text, stream_tts, format_text_for_speech
+from voice_agents import (
+    record_audio,
+    speech_to_text,
+    stream_tts,
+    format_text_for_speech,
+)
 
 audio = record_audio(duration=5.0, sample_rate=16000)
 

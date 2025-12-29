@@ -23,12 +23,15 @@ from voice_agents.utils import (
     format_text_for_speech,
     get_api_key,
     process_and_play_audio_buffer,
+    process_audio_buffer,
 )
 
 load_dotenv()
 
 # Configure loguru logger - enable verbose logging if env var is set
-_verbose_logging_enabled = os.getenv("VOICE_AGENTS_VERBOSE_LOGGING", "false").lower() in (
+_verbose_logging_enabled = os.getenv(
+    "VOICE_AGENTS_VERBOSE_LOGGING", "false"
+).lower() in (
     "true",
     "True",
     "1",
@@ -37,7 +40,38 @@ _verbose_logging_enabled = os.getenv("VOICE_AGENTS_VERBOSE_LOGGING", "false").lo
 
 if not _verbose_logging_enabled:
     logger.remove()  # Remove default handler
-    logger.add(lambda msg: None, level="DEBUG")  # Silent logger by default
+    logger.add(
+        lambda msg: None, level="DEBUG"
+    )  # Silent logger by default
+
+
+def _safe_get_response_text(response: httpx.Response) -> str:
+    """Safely get response text, handling streaming responses."""
+    try:
+        # Try to get text directly (works for non-streaming responses)
+        return response.text
+    except Exception:
+        # For streaming responses, we need to consume the stream
+        try:
+            # Try to read the response content
+            content_bytes = b""
+            try:
+                for chunk in response.iter_bytes():
+                    if chunk:
+                        content_bytes += chunk
+            except Exception:
+                # If iter_bytes fails, try read() as fallback
+                try:
+                    content_bytes = response.read()
+                except Exception:
+                    pass
+
+            if content_bytes:
+                return content_bytes.decode("utf-8", errors="ignore")
+            return ""
+        except Exception as read_error:
+            # Return a placeholder message if we can't read it
+            return f"(Unable to read response body: {type(read_error).__name__})"
 
 
 def stream_tts_openai(
@@ -96,10 +130,16 @@ def stream_tts_openai(
                 f"   Text chunks: {len(text_chunks)} chunks, "
                 f"Total length: {sum(len(str(c)) for c in text_chunks)} characters"
             )
-            for i, chunk in enumerate(text_chunks[:3]):  # Log first 3 chunks
-                logger.debug(f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}")
+            for i, chunk in enumerate(
+                text_chunks[:3]
+            ):  # Log first 3 chunks
+                logger.debug(
+                    f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}"
+                )
             if len(text_chunks) > 3:
-                logger.debug(f"   ... and {len(text_chunks) - 3} more chunks")
+                logger.debug(
+                    f"   ... and {len(text_chunks) - 3} more chunks"
+                )
         else:
             logger.debug("   Text chunks: iterable (unknown size)")
 
@@ -138,12 +178,16 @@ def stream_tts_openai(
     }
 
     if verbose_logging:
-        logger.debug(f"📋 Request headers prepared (Authorization: Bearer {api_key[:20]}...)")
+        logger.debug(
+            f"📋 Request headers prepared (Authorization: Bearer {api_key[:20]}...)"
+        )
 
     # If stream_mode is False, process all chunks at once (backward compatible)
     if not stream_mode:
         if verbose_logging:
-            logger.info("📦 Processing all chunks at once (non-streaming mode)")
+            logger.info(
+                "📦 Processing all chunks at once (non-streaming mode)"
+            )
 
         # Convert iterable to list if needed
         if isinstance(text_chunks, (list, tuple)):
@@ -156,7 +200,9 @@ def stream_tts_openai(
 
         if verbose_logging:
             logger.debug(f"📝 Combined text: {len(text)} characters")
-            logger.debug(f"   Preview: {text[:150]}{'...' if len(text) > 150 else ''}")
+            logger.debug(
+                f"   Preview: {text[:150]}{'...' if len(text) > 150 else ''}"
+            )
 
         # Payload
         payload = {
@@ -167,7 +213,9 @@ def stream_tts_openai(
         }
 
         if verbose_logging:
-            logger.debug(f"📤 Request payload: {list(payload.keys())} (input length: {len(text)} chars)")
+            logger.debug(
+                f"📤 Request payload: {list(payload.keys())} (input length: {len(text)} chars)"
+            )
 
         # Buffer to handle incomplete chunks (int16 = 2 bytes per sample)
         buffer = bytearray()
@@ -175,7 +223,9 @@ def stream_tts_openai(
         # Make streaming request to OpenAI TTS API
         try:
             if verbose_logging:
-                logger.info("🚀 Sending HTTP POST request to OpenAI TTS API...")
+                logger.info(
+                    "🚀 Sending HTTP POST request to OpenAI TTS API..."
+                )
 
             with httpx.stream(
                 "POST",
@@ -185,8 +235,12 @@ def stream_tts_openai(
                 timeout=30.0,
             ) as response:
                 if verbose_logging:
-                    logger.debug(f"📡 Response received: Status {response.status_code}")
-                    logger.debug(f"   Response headers: {dict(response.headers)}")
+                    logger.debug(
+                        f"📡 Response received: Status {response.status_code}"
+                    )
+                    logger.debug(
+                        f"   Response headers: {dict(response.headers)}"
+                    )
 
                 # Check for authentication errors
                 if response.status_code == 401:
@@ -219,7 +273,9 @@ def stream_tts_openai(
                 response.raise_for_status()
 
                 if verbose_logging:
-                    logger.info("✅ Response successful, streaming audio chunks...")
+                    logger.info(
+                        "✅ Response successful, streaming audio chunks..."
+                    )
 
                 # Stream audio chunks
                 chunk_count = 0
@@ -251,10 +307,14 @@ def stream_tts_openai(
 
                 # Process all buffered data at once
                 if verbose_logging:
-                    logger.info(f"🎵 Processing audio buffer: {len(buffer)} bytes")
+                    logger.info(
+                        f"🎵 Processing audio buffer: {len(buffer)} bytes"
+                    )
                 process_and_play_audio_buffer(buffer, response_format)
                 if verbose_logging:
-                    logger.info("✅ Audio playback completed successfully")
+                    logger.info(
+                        "✅ Audio playback completed successfully"
+                    )
                     logger.info("=" * 80)
         except httpx.HTTPStatusError as e:
             # Re-raise ValueError if we already converted it
@@ -262,24 +322,32 @@ def stream_tts_openai(
                 raise
             # Otherwise, provide a generic error message
             raise ValueError(
-                f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                f"HTTP error {e.response.status_code}: {_safe_get_response_text(e.response)}\n"
                 f"URL: {e.request.url}"
             ) from e
     else:
         # Stream mode: process each chunk as it arrives
         if verbose_logging:
-            logger.info("🔄 Processing chunks in stream mode (real-time)")
-        
+            logger.info(
+                "🔄 Processing chunks in stream mode (real-time)"
+            )
+
         chunk_index = 0
         for chunk in text_chunks:
             chunk_index += 1
             if not chunk or not chunk.strip():
                 if verbose_logging:
-                    logger.debug(f"   ⏭️  Skipping empty chunk {chunk_index}")
+                    logger.debug(
+                        f"   ⏭️  Skipping empty chunk {chunk_index}"
+                    )
                 continue
             if verbose_logging:
-                logger.info(f"📦 Processing chunk {chunk_index}: {len(chunk.strip())} characters")
-                logger.debug(f"   Preview: {chunk.strip()[:100]}{'...' if len(chunk.strip()) > 100 else ''}")
+                logger.info(
+                    f"📦 Processing chunk {chunk_index}: {len(chunk.strip())} characters"
+                )
+                logger.debug(
+                    f"   Preview: {chunk.strip()[:100]}{'...' if len(chunk.strip()) > 100 else ''}"
+                )
 
             # Payload for this chunk
             payload = {
@@ -295,7 +363,9 @@ def stream_tts_openai(
             # Make streaming request to OpenAI TTS API for this chunk
             try:
                 if verbose_logging:
-                    logger.debug(f"🚀 Sending request for chunk {chunk_index}...")
+                    logger.debug(
+                        f"🚀 Sending request for chunk {chunk_index}..."
+                    )
 
                 with httpx.stream(
                     "POST",
@@ -305,7 +375,9 @@ def stream_tts_openai(
                     timeout=30.0,
                 ) as response:
                     if verbose_logging:
-                        logger.debug(f"📡 Chunk {chunk_index} response: Status {response.status_code}")
+                        logger.debug(
+                            f"📡 Chunk {chunk_index} response: Status {response.status_code}"
+                        )
                     # Check for authentication errors
                     if response.status_code == 401:
                         error_text = (
@@ -332,7 +404,9 @@ def stream_tts_openai(
                     response.raise_for_status()
 
                     if verbose_logging:
-                        logger.debug(f"✅ Chunk {chunk_index} response successful, streaming audio...")
+                        logger.debug(
+                            f"✅ Chunk {chunk_index} response successful, streaming audio..."
+                        )
 
                     # Stream audio chunks for this text chunk
                     audio_chunk_count = 0
@@ -350,12 +424,18 @@ def stream_tts_openai(
                     # Process and play audio for this chunk immediately
                     if len(buffer) > 0:
                         if verbose_logging:
-                            logger.info(f"🎵 Playing audio for chunk {chunk_index}...")
+                            logger.info(
+                                f"🎵 Playing audio for chunk {chunk_index}..."
+                            )
                         process_and_play_audio_buffer(
-                            buffer, response_format, warn_on_empty=True
+                            buffer,
+                            response_format,
+                            warn_on_empty=True,
                         )
                         if verbose_logging:
-                            logger.debug(f"✅ Chunk {chunk_index} playback completed")
+                            logger.debug(
+                                f"✅ Chunk {chunk_index} playback completed"
+                            )
                     else:
                         warning_msg = f"No audio data received for chunk: '{chunk[:50]}...'"
                         if verbose_logging:
@@ -368,21 +448,28 @@ def stream_tts_openai(
                     raise
                 # Otherwise, provide a generic error message
                 error_msg = (
-                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                    f"HTTP error {e.response.status_code}: {_safe_get_response_text(e.response)}\n"
                     f"URL: {e.request.url}"
                 )
                 if verbose_logging:
-                    logger.error(f"❌ HTTP Error for chunk {chunk_index}: {error_msg}")
+                    logger.error(
+                        f"❌ HTTP Error for chunk {chunk_index}: {error_msg}"
+                    )
                 raise ValueError(error_msg) from e
             except Exception as e:
                 if verbose_logging:
-                    logger.error(f"❌ Error processing chunk {chunk_index}: {type(e).__name__}: {e}")
+                    logger.error(
+                        f"❌ Error processing chunk {chunk_index}: {type(e).__name__}: {e}"
+                    )
                     import traceback
+
                     logger.debug(traceback.format_exc())
                 raise
 
         if verbose_logging:
-            logger.info(f"✅ All {chunk_index} chunks processed successfully")
+            logger.info(
+                f"✅ All {chunk_index} chunks processed successfully"
+            )
             logger.info("=" * 80)
 
 
@@ -627,7 +714,9 @@ def stream_tts(
     if verbose_logging:
         logger.info("=" * 80)
         logger.info("🎙️  Starting Unified TTS Request")
-        logger.info(f"   Model: {model} | Voice: {voice} | Stream Mode: {stream_mode}")
+        logger.info(
+            f"   Model: {model} | Voice: {voice} | Stream Mode: {stream_mode}"
+        )
 
     # Parse model name to extract provider and model
     provider = None
@@ -662,8 +751,10 @@ def stream_tts(
     # Route to appropriate provider
     if provider == "openai":
         if verbose_logging:
-            logger.info(f"🔀 Routing to OpenAI provider (model: {model_name})")
-        
+            logger.info(
+                f"🔀 Routing to OpenAI provider (model: {model_name})"
+            )
+
         # Use OpenAI
         if voice is None:
             voice = "alloy"  # Default OpenAI voice
@@ -674,7 +765,9 @@ def stream_tts(
         if response_format is None:
             response_format = "pcm"
             if verbose_logging:
-                logger.debug(f"   Using default response_format: {response_format}")
+                logger.debug(
+                    f"   Using default response_format: {response_format}"
+                )
 
         return stream_tts_openai(
             text_chunks=text_chunks,
@@ -687,8 +780,10 @@ def stream_tts(
 
     elif provider == "elevenlabs":
         if verbose_logging:
-            logger.info(f"🔀 Routing to ElevenLabs provider (model: {model_name})")
-        
+            logger.info(
+                f"🔀 Routing to ElevenLabs provider (model: {model_name})"
+            )
+
         # Use ElevenLabs
         # Determine voice_id: use voice_id parameter if provided, otherwise use voice parameter
         if voice_id is None:
@@ -702,17 +797,24 @@ def stream_tts(
                 raise ValueError(error_msg)
             voice_id = voice
             if verbose_logging:
-                logger.debug(f"   Using voice parameter as voice_id: {voice_id}")
+                logger.debug(
+                    f"   Using voice parameter as voice_id: {voice_id}"
+                )
         else:
             # voice_id was explicitly provided, use it
             if verbose_logging:
-                logger.debug(f"   Using provided voice_id: {voice_id}")
+                logger.debug(
+                    f"   Using provided voice_id: {voice_id}"
+                )
 
         # Set default output_format for ElevenLabs if not provided
+        # Use mp3_44100_128 as default (works on free tier, pcm_44100 requires Pro tier)
         if output_format is None:
-            output_format = "pcm_44100"
+            output_format = "mp3_44100_128"
             if verbose_logging:
-                logger.debug(f"   Using default output_format: {output_format}")
+                logger.debug(
+                    f"   Using default output_format: {output_format}"
+                )
 
         return stream_tts_elevenlabs(
             text_chunks=text_chunks,
@@ -729,8 +831,10 @@ def stream_tts(
 
     elif provider == "groq":
         if verbose_logging:
-            logger.info(f"🔀 Routing to Groq provider (model: {model_name})")
-        
+            logger.info(
+                f"🔀 Routing to Groq provider (model: {model_name})"
+            )
+
         # Use Groq
         if voice is None:
             error_msg = (
@@ -746,7 +850,9 @@ def stream_tts(
         if response_format is None:
             response_format = "wav"
             if verbose_logging:
-                logger.debug(f"   Using default response_format: {response_format}")
+                logger.debug(
+                    f"   Using default response_format: {response_format}"
+                )
 
         return stream_tts_groq(
             text_chunks=text_chunks,
@@ -773,7 +879,7 @@ def stream_tts_elevenlabs(
     model_id: str = "eleven_multilingual_v2",
     stability: float = 0.5,
     similarity_boost: float = 0.75,
-    output_format: str = "pcm_44100",
+    output_format: str = "mp3_44100_128",
     optimize_streaming_latency: Optional[int] = None,
     enable_logging: bool = True,
     stream_mode: bool = False,
@@ -789,9 +895,10 @@ def stream_tts_elevenlabs(
         model_id (str): The model ID to use. Default is "eleven_multilingual_v2".
         stability (float): Stability setting for voice (0.0 to 1.0). Default is 0.5.
         similarity_boost (float): Similarity boost setting (0.0 to 1.0). Default is 0.75.
-        output_format (str): Output audio format. Options: "pcm_8000", "pcm_16000", "pcm_22050", "pcm_24000",
-            "pcm_32000", "pcm_44100", "pcm_48000", "ulaw_8000", "alaw_8000".
-            Default is "pcm_44100" for compatibility with play_audio.
+        output_format (str): Output audio format. Options include:
+            - Free tier: "mp3_44100_128" (default), "mp3_44100_192", "pcm_16000", "pcm_22050", "pcm_24000"
+            - Pro tier: "pcm_8000", "pcm_32000", "pcm_44100", "pcm_48000", "ulaw_8000", "alaw_8000"
+            Default is "mp3_44100_128" (works on free tier accounts). Note: "pcm_44100" requires Pro tier subscription.
         optimize_streaming_latency (Optional[int]): Latency optimization (0-4). Default is None.
         enable_logging (bool): Enable logging for the request. Default is True.
         stream_mode (bool): If True, process chunks as they arrive in real-time. If False, join all chunks
@@ -831,7 +938,9 @@ def stream_tts_elevenlabs(
         if isinstance(text_chunks, (list, tuple)):
             logger.debug(f"   Text chunks: {len(text_chunks)} chunks")
             for i, chunk in enumerate(text_chunks[:3]):
-                logger.debug(f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}")
+                logger.debug(
+                    f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}"
+                )
 
     # Get API key from parameter or environment variable
     api_key = get_api_key(
@@ -881,10 +990,8 @@ def stream_tts_elevenlabs(
     ) or output_format.startswith("alaw_"):
         sample_rate = sample_rate_map.get(output_format, 8000)
     elif output_format.startswith("mp3_"):
-        # For MP3 formats, we'd need to decode first (not implemented)
-        raise ValueError(
-            f"MP3 format '{output_format}' not yet supported. Please use PCM format (e.g., 'pcm_44100')."
-        )
+        # For MP3 formats, extract sample rate from map
+        sample_rate = sample_rate_map.get(output_format, 44100)
     elif output_format.startswith("opus_"):
         # For Opus formats, we'd need to decode first (not implemented)
         raise ValueError(
@@ -892,61 +999,6 @@ def stream_tts_elevenlabs(
         )
     else:
         sample_rate = 44100  # Default fallback
-
-    # Helper function to process and play audio
-    def process_audio_buffer(
-        buffer: bytearray, sample_rate: int
-    ) -> None:
-        """Process audio buffer and play it."""
-        if len(buffer) > 0:
-            if output_format.startswith("pcm_"):
-                # For PCM format, convert bytes to numpy array
-                # PCM is 16-bit signed integers (2 bytes per sample)
-                if len(buffer) >= 2:
-                    complete_samples_size = (len(buffer) // 2) * 2
-                    complete_buffer = bytes(
-                        buffer[:complete_samples_size]
-                    )
-                    audio = np.frombuffer(
-                        complete_buffer, dtype=np.int16
-                    )
-
-                    # Play audio with the appropriate sample rate
-                    if len(audio) > 0:
-                        audio_float = (
-                            audio.astype(np.float32) / 32768.0
-                        )
-                        sd.play(audio_float, sample_rate)
-                        sd.wait()
-            elif output_format.startswith(
-                "ulaw_"
-            ) or output_format.startswith("alaw_"):
-                # For μ-law and A-law formats, we need to decode them
-                # These are 8-bit per sample formats
-                try:
-                    import audioop
-
-                    if output_format.startswith("ulaw_"):
-                        decoded = audioop.ulaw2lin(bytes(buffer), 2)
-                    else:  # alaw
-                        decoded = audioop.alaw2lin(bytes(buffer), 2)
-                    audio = np.frombuffer(decoded, dtype=np.int16)
-                    if len(audio) > 0:
-                        audio_float = (
-                            audio.astype(np.float32) / 32768.0
-                        )
-                        sd.play(audio_float, sample_rate)
-                        sd.wait()
-                except ImportError:
-                    raise ValueError(
-                        f"Format '{output_format}' requires the 'audioop' module for decoding. "
-                        "Please use PCM format instead (e.g., 'pcm_44100')."
-                    )
-            else:
-                raise ValueError(
-                    f"Format '{output_format}' is not yet supported for playback. "
-                    "Please use PCM format (e.g., 'pcm_44100')."
-                )
 
     # Build URL with query parameters
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{actual_voice_id}/stream"
@@ -1050,6 +1102,64 @@ def stream_tts_elevenlabs(
                         f"Voice ID '{actual_voice_id}' not found. Please check if the voice ID is correct.\n"
                         f"If you used a friendly name like '{voice_id}', verify it exists in ELEVENLABS_VOICES."
                     )
+                elif response.status_code >= 400:
+                    # For other error status codes, read the error response before raising
+                    error_text = (
+                        "No additional error details available"
+                    )
+                    error_detail = None
+                    try:
+                        # Read the error response body
+                        error_bytes = b""
+                        for chunk in response.iter_bytes():
+                            error_bytes += chunk
+                        if error_bytes:
+                            error_text = error_bytes.decode(
+                                "utf-8", errors="ignore"
+                            )
+                            # Try to parse JSON error for better error messages
+                            try:
+                                import json
+
+                                error_json = json.loads(error_text)
+                                if "detail" in error_json:
+                                    error_detail = error_json[
+                                        "detail"
+                                    ]
+                            except Exception:
+                                pass
+                    except Exception as e:
+                        error_text = (
+                            f"Could not read error response: {str(e)}"
+                        )
+
+                    # Provide helpful suggestions for common errors
+                    suggestion = ""
+                    if error_detail and isinstance(
+                        error_detail, dict
+                    ):
+                        status = error_detail.get("status", "")
+
+                        if (
+                            "output_format_not_allowed" in status
+                            or "output_format_not_allowed"
+                            in str(error_detail)
+                        ):
+                            suggestion = (
+                                "\n\n💡 Suggestion: The requested output format requires a Pro tier subscription. "
+                                "Try using one of these free tier formats instead:\n"
+                                "  - mp3_44100_128 (MP3, 44.1kHz, 128kbps) - Recommended\n"
+                                "  - mp3_44100_192 (MP3, 44.1kHz, 192kbps)\n"
+                                "  - pcm_16000 (PCM, 16kHz)\n"
+                                "  - pcm_22050 (PCM, 22.05kHz)\n"
+                                "  - pcm_24000 (PCM, 24kHz)\n"
+                                "Example: stream_tts(..., output_format='mp3_44100_128')"
+                            )
+
+                    raise ValueError(
+                        f"HTTP error {response.status_code}: {error_text}{suggestion}\n"
+                        f"URL: {response.request.url}"
+                    )
 
                 response.raise_for_status()
 
@@ -1062,14 +1172,16 @@ def stream_tts_elevenlabs(
                         buffer.extend(chunk)
 
                 # Process buffered audio data
-                process_audio_buffer(buffer, sample_rate)
+                process_audio_buffer(
+                    buffer, output_format, sample_rate
+                )
         except httpx.HTTPStatusError as e:
             # Re-raise ValueError if we already converted it
             if isinstance(e, ValueError):
                 raise
             # Otherwise, provide a generic error message
             raise ValueError(
-                f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                f"HTTP error {e.response.status_code}: {_safe_get_response_text(e.response)}\n"
                 f"URL: {e.request.url}"
             ) from e
     else:
@@ -1136,6 +1248,64 @@ def stream_tts_elevenlabs(
                             f"Voice ID '{actual_voice_id}' not found. Please check if the voice ID is correct.\n"
                             f"If you used a friendly name like '{voice_id}', verify it exists in ELEVENLABS_VOICES."
                         )
+                    elif response.status_code >= 400:
+                        # For other error status codes, read the error response before raising
+                        error_text = (
+                            "No additional error details available"
+                        )
+                        error_detail = None
+                        try:
+                            # Read the error response body
+                            error_bytes = b""
+                            for chunk in response.iter_bytes():
+                                error_bytes += chunk
+                            if error_bytes:
+                                error_text = error_bytes.decode(
+                                    "utf-8", errors="ignore"
+                                )
+                                # Try to parse JSON error for better error messages
+                                try:
+                                    import json
+
+                                    error_json = json.loads(
+                                        error_text
+                                    )
+                                    if "detail" in error_json:
+                                        error_detail = error_json[
+                                            "detail"
+                                        ]
+                                except Exception:
+                                    pass
+                        except Exception as e:
+                            error_text = f"Could not read error response: {str(e)}"
+
+                        # Provide helpful suggestions for common errors
+                        suggestion = ""
+                        if error_detail and isinstance(
+                            error_detail, dict
+                        ):
+                            status = error_detail.get("status", "")
+
+                            if (
+                                "output_format_not_allowed" in status
+                                or "output_format_not_allowed"
+                                in str(error_detail)
+                            ):
+                                suggestion = (
+                                    "\n\n💡 Suggestion: The requested output format requires a Pro tier subscription. "
+                                    "Try using one of these free tier formats instead:\n"
+                                    "  - mp3_44100_128 (MP3, 44.1kHz, 128kbps) - Recommended\n"
+                                    "  - mp3_44100_192 (MP3, 44.1kHz, 192kbps)\n"
+                                    "  - pcm_16000 (PCM, 16kHz)\n"
+                                    "  - pcm_22050 (PCM, 22.05kHz)\n"
+                                    "  - pcm_24000 (PCM, 24kHz)\n"
+                                    "Example: stream_tts(..., output_format='mp3_44100_128')"
+                                )
+
+                        raise ValueError(
+                            f"HTTP error {response.status_code}: {error_text}{suggestion}\n"
+                            f"URL: {response.request.url}"
+                        )
 
                     response.raise_for_status()
 
@@ -1148,14 +1318,16 @@ def stream_tts_elevenlabs(
                             buffer.extend(audio_chunk)
 
                     # Process and play audio for this chunk immediately
-                    process_audio_buffer(buffer, sample_rate)
+                    process_audio_buffer(
+                        buffer, output_format, sample_rate
+                    )
             except httpx.HTTPStatusError as e:
                 # Re-raise ValueError if we already converted it
                 if isinstance(e, ValueError):
                     raise
                 # Otherwise, provide a generic error message
                 raise ValueError(
-                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                    f"HTTP error {e.response.status_code}: {_safe_get_response_text(e.response)}\n"
                     f"URL: {e.request.url}"
                 ) from e
 
@@ -1225,7 +1397,9 @@ def stream_tts_groq(
         if isinstance(text_chunks, (list, tuple)):
             logger.debug(f"   Text chunks: {len(text_chunks)} chunks")
             for i, chunk in enumerate(text_chunks[:3]):
-                logger.debug(f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}")
+                logger.debug(
+                    f"   Chunk {i+1}: {str(chunk)[:100]}{'...' if len(str(chunk)) > 100 else ''}"
+                )
 
     # Get API key from environment variable
     api_key = get_api_key(
@@ -1383,7 +1557,9 @@ def stream_tts_groq(
                         )
                 elif response_format != "wav":
                     # For non-WAV formats, we can't play directly
-                    print(f"Warning: {response_format} format not supported for direct playback. Only 'wav' format is supported.")
+                    print(
+                        f"Warning: {response_format} format not supported for direct playback. Only 'wav' format is supported."
+                    )
                     pass
         except httpx.HTTPStatusError as e:
             # Re-raise ValueError if we already converted it
@@ -1391,7 +1567,7 @@ def stream_tts_groq(
                 raise
             # Otherwise, provide a generic error message
             raise ValueError(
-                f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                f"HTTP error {e.response.status_code}: {_safe_get_response_text(e.response)}\n"
                 f"URL: {e.request.url}"
             ) from e
     else:
@@ -1509,7 +1685,9 @@ def stream_tts_groq(
                             )
                     elif response_format != "wav":
                         # For non-WAV formats, we can't play directly
-                        print(f"Warning: {response_format} format not supported for direct playback. Only 'wav' format is supported.")
+                        print(
+                            f"Warning: {response_format} format not supported for direct playback. Only 'wav' format is supported."
+                        )
                         pass
             except httpx.HTTPStatusError as e:
                 # Re-raise ValueError if we already converted it
@@ -1517,11 +1695,9 @@ def stream_tts_groq(
                     raise
                 # Otherwise, provide a generic error message
                 raise ValueError(
-                    f"HTTP error {e.response.status_code}: {e.response.text}\n"
+                    f"HTTP error {e.response.status_code}: {_safe_get_response_text(e.response)}\n"
                     f"URL: {e.request.url}"
                 ) from e
-
-
 
 
 class StreamingTTSCallback:
