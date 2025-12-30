@@ -9,101 +9,81 @@ examples/
 ├── text_to_speech/          # Text-to-speech examples
 ├── speech_to_text/          # Speech-to-text examples
 ├── utilities/               # Utility functions
+├── agents/                  # Agent integration examples
 └── workflows/               # Complete workflow examples
 ```
+
+## Complete Examples Table
+
+| Category | Example File | Description | Provider | Link |
+|----------|-------------|-------------|----------|------|
+| **Text-to-Speech** | `example_stream_tts_elevenlabs.py` | ElevenLabs TTS with unified API | ElevenLabs | [Link](text_to_speech/example_stream_tts_elevenlabs.py) |
+| **Text-to-Speech** | `example_stream_tts_groq.py` | Groq TTS with Orpheus models | Groq | [Link](text_to_speech/example_stream_tts_groq.py) |
+| **Text-to-Speech** | `example_streaming_tts_callback.py` | Streaming TTS callback class | Multi-provider | [Link](text_to_speech/example_streaming_tts_callback.py) |
+| **Text-to-Speech** | `example_stt.py` | Simple TTS with OpenAI | OpenAI | [Link](text_to_speech/example_stt.py) |
+| **Text-to-Speech** | `example_voice_selection.py` | Voice selection examples | Multi-provider | [Link](text_to_speech/example_voice_selection.py) |
+| **Text-to-Speech** | `streaming_callback_example.py` | Streaming callback pattern | Multi-provider | [Link](text_to_speech/streaming_callback_example.py) |
+| **Speech-to-Text** | `example_speech_to_text_elevenlabs_file.py` | Transcribe audio from file | ElevenLabs | [Link](speech_to_text/example_speech_to_text_elevenlabs_file.py) |
+| **Speech-to-Text** | `example_speech_to_text_elevenlabs_audio.py` | Transcribe audio from numpy array | ElevenLabs | [Link](speech_to_text/example_speech_to_text_elevenlabs_audio.py) |
+| **Speech-to-Text** | `example_speech_to_text_elevenlabs_realtime.py` | Real-time transcription via WebSocket | ElevenLabs | [Link](speech_to_text/example_speech_to_text_elevenlabs_realtime.py) |
+| **Speech-to-Text** | `example_speech_to_text_elevenlabs_diarization.py` | Speaker diarization | ElevenLabs | [Link](speech_to_text/example_speech_to_text_elevenlabs_diarization.py) |
+| **Speech-to-Text** | `example_speech_to_text_elevenlabs_timestamps.py` | Word-level timestamps | ElevenLabs | [Link](speech_to_text/example_speech_to_text_elevenlabs_timestamps.py) |
+| **Speech-to-Text** | `example_speech_to_text_groq.py` | Fast Whisper transcription | Groq | [Link](speech_to_text/example_speech_to_text_groq.py) |
+| **Utilities** | `example_record_audio.py` | Audio recording from microphone | - | [Link](utilities/example_record_audio.py) |
+| **Utilities** | `example_play_audio.py` | Audio playback | - | [Link](utilities/example_play_audio.py) |
+| **Utilities** | `example_format_text_for_speech.py` | Text formatting for speech | - | [Link](utilities/example_format_text_for_speech.py) |
+| **Utilities** | `example_get_media_type.py` | Media type utilities | - | [Link](utilities/example_get_media_type.py) |
+| **Utilities** | `example.py` | General utilities example | - | [Link](utilities/example.py) |
+| **Agents** | `speech_to_text_agent.py` | Agent with speech-to-text input | Swarms | [Link](agents/speech_to_text_agent.py) |
+| **Workflows** | `example_complete_voice_agent.py` | Complete conversational voice agent | Multi-provider | [Link](workflows/example_complete_voice_agent.py) |
+| **Root Examples** | `example_speech_to_text_elevenlabs_audio.py` | ElevenLabs STT from audio data | ElevenLabs | [Link](example_speech_to_text_elevenlabs_audio.py) |
+| **Root Examples** | `example_speech_to_text_elevenlabs_file.py` | ElevenLabs STT from file | ElevenLabs | [Link](example_speech_to_text_elevenlabs_file.py) |
 
 ## Examples by Category
 
 ### Text-to-Speech (`text_to_speech/`)
 
-1. **[`example_stream_tts.py`](text_to_speech/example_stream_tts.py)**
-   - Unified TTS API examples with OpenAI models
-   - Different voices, models, and streaming modes
-   - Batch and real-time processing examples
-   - Demonstrates `list_models()` function
+See the [Text-to-Speech README](text_to_speech/README.md) for detailed documentation.
 
-2. **[`example_stream_tts_elevenlabs.py`](text_to_speech/example_stream_tts_elevenlabs.py)**
-   - ElevenLabs TTS API examples
-   - Unified `stream_tts()` and direct `stream_tts_elevenlabs()` usage
-   - Voice selection and customization
-   - Different output formats and settings
-   - Demonstrates `list_models()` and `list_voices()` functions
-
-3. **[`example_stream_tts_groq.py`](text_to_speech/example_stream_tts_groq.py)**
-   - Groq TTS API examples using Orpheus models
-   - Basic TTS and TTS with vocal directions (emotions)
-   - Long text chunking and Arabic language support
-
-4. **[`example_streaming_tts_callback.py`](text_to_speech/example_streaming_tts_callback.py)**
-   - StreamingTTSCallback class usage
-   - Real-time text-to-speech conversion
-   - Integration with agent frameworks
-
-5. **[`example_voice_selection.py`](text_to_speech/example_voice_selection.py)**
-   - Available voices for all providers (OpenAI, ElevenLabs, Groq)
-   - Voice selection helpers using `list_voices()` function
-   - Use case recommendations
+- **[`example_stream_tts_elevenlabs.py`](text_to_speech/example_stream_tts_elevenlabs.py)** - ElevenLabs TTS with unified API
+- **[`example_stream_tts_groq.py`](text_to_speech/example_stream_tts_groq.py)** - Groq TTS with Orpheus models
+- **[`example_streaming_tts_callback.py`](text_to_speech/example_streaming_tts_callback.py)** - Streaming TTS callback class
+- **[`example_stt.py`](text_to_speech/example_stt.py)** - Simple TTS with OpenAI
+- **[`example_voice_selection.py`](text_to_speech/example_voice_selection.py)** - Voice selection examples
+- **[`streaming_callback_example.py`](text_to_speech/streaming_callback_example.py)** - Streaming callback pattern
 
 ### Speech-to-Text (`speech_to_text/`)
 
-5. **[`example_speech_to_text.py`](speech_to_text/example_speech_to_text.py)**
-   - OpenAI Whisper API examples
-   - File-based and audio data transcription
-   - Different models and response formats
+See the [Speech-to-Text README](speech_to_text/README.md) for detailed documentation.
 
-6. **[`example_speech_to_text_groq.py`](speech_to_text/example_speech_to_text_groq.py)**
-   - Groq fast Whisper transcription and translation
-   - Word-level timestamps and verbose JSON output
-   - Live recording transcription example
-
-7. **[`example_speech_to_text_elevenlabs_file.py`](speech_to_text/example_speech_to_text_elevenlabs_file.py)**
-   - ElevenLabs Speech-to-Text from audio file
-   - Non-real-time transcription
-
-7. **[`example_speech_to_text_elevenlabs_audio.py`](speech_to_text/example_speech_to_text_elevenlabs_audio.py)**
-   - ElevenLabs Speech-to-Text from audio data (numpy array)
-   - Non-real-time transcription
-
-8. **[`example_speech_to_text_elevenlabs_realtime.py`](speech_to_text/example_speech_to_text_elevenlabs_realtime.py)**
-   - ElevenLabs real-time WebSocket transcription
-   - Streaming audio with live transcription results
-
-9. **[`example_speech_to_text_elevenlabs_diarization.py`](speech_to_text/example_speech_to_text_elevenlabs_diarization.py)**
-   - Speaker diarization with ElevenLabs
-   - Identify different speakers in conversations
-
-10. **[`example_speech_to_text_elevenlabs_timestamps.py`](speech_to_text/example_speech_to_text_elevenlabs_timestamps.py)**
-    - Word-level timestamps with ElevenLabs
-    - Precise timing information for transcription
+- **[`example_speech_to_text_elevenlabs_file.py`](speech_to_text/example_speech_to_text_elevenlabs_file.py)** - Transcribe audio from file
+- **[`example_speech_to_text_elevenlabs_audio.py`](speech_to_text/example_speech_to_text_elevenlabs_audio.py)** - Transcribe audio from numpy array
+- **[`example_speech_to_text_elevenlabs_realtime.py`](speech_to_text/example_speech_to_text_elevenlabs_realtime.py)** - Real-time transcription via WebSocket
+- **[`example_speech_to_text_elevenlabs_diarization.py`](speech_to_text/example_speech_to_text_elevenlabs_diarization.py)** - Speaker diarization
+- **[`example_speech_to_text_elevenlabs_timestamps.py`](speech_to_text/example_speech_to_text_elevenlabs_timestamps.py)** - Word-level timestamps
+- **[`example_speech_to_text_groq.py`](speech_to_text/example_speech_to_text_groq.py)** - Fast Whisper transcription
 
 ### Utilities (`utilities/`)
 
-11. **[`example_format_text_for_speech.py`](utilities/example_format_text_for_speech.py)**
-    - Text formatting for speech
-    - Shows handling of abbreviations, URLs, and punctuation
-    - Splits long text into speech-friendly chunks
+See the [Utilities README](utilities/README.md) for detailed documentation.
 
-12. **[`example_play_audio.py`](utilities/example_play_audio.py)**
-    - Shows how to play audio data
-    - Generates and plays simple tones
-    - Demonstrates audio playback with different formats
+- **[`example_record_audio.py`](utilities/example_record_audio.py)** - Audio recording from microphone
+- **[`example_play_audio.py`](utilities/example_play_audio.py)** - Audio playback
+- **[`example_format_text_for_speech.py`](utilities/example_format_text_for_speech.py)** - Text formatting for speech
+- **[`example_get_media_type.py`](utilities/example_get_media_type.py)** - Media type utilities
+- **[`example.py`](utilities/example.py)** - General utilities example
 
-13. **[`example_record_audio.py`](utilities/example_record_audio.py)**
-    - Audio recording from microphone
-    - Different durations and sample rates
-    - Audio analysis and file saving
+### Agents (`agents/`)
 
-14. **[`example_get_media_type.py`](utilities/example_get_media_type.py)**
-    - Media type (MIME type) utilities
-    - FastAPI integration examples
-    - Format validation helpers
+See the [Agents README](agents/README.md) for detailed documentation.
 
-### Complete Workflows (`workflows/`)
+- **[`speech_to_text_agent.py`](agents/speech_to_text_agent.py)** - Agent with speech-to-text input
 
-15. **[`example_complete_voice_agent.py`](workflows/example_complete_voice_agent.py)**
-    - Full conversational voice agent
-    - Combines recording, transcription, and TTS
-    - Multiple agent patterns and examples
+### Workflows (`workflows/`)
+
+See the [Workflows README](workflows/README.md) for detailed documentation.
+
+- **[`example_complete_voice_agent.py`](workflows/example_complete_voice_agent.py)** - Complete conversational voice agent
 
 ## Running Examples
 
@@ -131,19 +111,37 @@ examples/
 
 ```bash
 # Text-to-Speech examples
-python examples/text_to_speech/example_stream_tts.py
 python examples/text_to_speech/example_stream_tts_elevenlabs.py
+python examples/text_to_speech/example_stream_tts_groq.py
+python examples/text_to_speech/example_streaming_tts_callback.py
+python examples/text_to_speech/example_stt.py
+python examples/text_to_speech/example_voice_selection.py
+python examples/text_to_speech/streaming_callback_example.py
 
 # Speech-to-Text examples
-python examples/speech_to_text/example_speech_to_text.py
 python examples/speech_to_text/example_speech_to_text_elevenlabs_file.py
+python examples/speech_to_text/example_speech_to_text_elevenlabs_audio.py
+python examples/speech_to_text/example_speech_to_text_elevenlabs_realtime.py
+python examples/speech_to_text/example_speech_to_text_elevenlabs_diarization.py
+python examples/speech_to_text/example_speech_to_text_elevenlabs_timestamps.py
+python examples/speech_to_text/example_speech_to_text_groq.py
 
 # Utility examples
-python examples/utilities/example_format_text_for_speech.py
 python examples/utilities/example_record_audio.py
+python examples/utilities/example_play_audio.py
+python examples/utilities/example_format_text_for_speech.py
+python examples/utilities/example_get_media_type.py
+python examples/utilities/example.py
+
+# Agent examples
+python examples/agents/speech_to_text_agent.py
 
 # Workflow examples
 python examples/workflows/example_complete_voice_agent.py
+
+# Root examples
+python examples/example_speech_to_text_elevenlabs_audio.py
+python examples/example_speech_to_text_elevenlabs_file.py
 ```
 
 ### Note on Audio Examples
